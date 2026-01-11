@@ -84,6 +84,7 @@ export async function loadMarketplacePage({
   let rawMarkdownContent: string | undefined;
   let frontmatter: Record<string, {}> | undefined;
   let imports: string[] | undefined;
+  let sourceUrl: string | undefined;
 
   if (flatPages) {
     const pageEntry = Object.entries(flatPages).find(
@@ -102,23 +103,31 @@ export async function loadMarketplacePage({
       throw redirect({ to: itemPath });
     }
 
+    sourceUrl = page;
     const content = await getContentString(page);
     rawMarkdownContent = content;
     const markdown = await parse(content);
-    renderedMarkdown = markdown.html;
-    frontmatter = markdown.frontmatter as Record<string, {}> | undefined;
-    imports = markdown.frontmatter?.imports as string[] | undefined;
+    renderedMarkdown = resolveHtmlAssetLinks(markdown.html, sourceUrl);
+    frontmatter = resolveFrontmatterLinks(
+      markdown.frontmatter as Record<string, {}> | undefined,
+      sourceUrl,
+    );
+    imports = frontmatter?.imports as string[] | undefined;
   } else if (item.readme) {
     const readme =
       typeof item.readme === "object" ? item.readme.en : item.readme;
 
     try {
+      sourceUrl = readme;
       const content = await getContentString(readme);
       rawMarkdownContent = content;
       const markdown = await parse(content);
-      renderedMarkdown = markdown.html;
-      frontmatter = markdown.frontmatter as Record<string, {}> | undefined;
-      imports = markdown.frontmatter?.imports as string[] | undefined;
+      renderedMarkdown = resolveHtmlAssetLinks(markdown.html, sourceUrl);
+      frontmatter = resolveFrontmatterLinks(
+        markdown.frontmatter as Record<string, {}> | undefined,
+        sourceUrl,
+      );
+      imports = frontmatter?.imports as string[] | undefined;
     } catch {
       throw redirect({ to: "/not-found" });
     }
@@ -180,6 +189,61 @@ function flattenPages(
     }
   }
   return flatPages;
+}
+
+function resolveFrontmatterLinks(
+  frontmatter: Record<string, {}> | undefined,
+  baseUrl?: string,
+) {
+  if (!frontmatter || !baseUrl || !baseUrl.startsWith("http")) {
+    return frontmatter;
+  }
+
+  const resolved = { ...frontmatter };
+  const urlKeys = ["og:image", "og:image:secure_url", "twitter:image"];
+
+  for (const key of urlKeys) {
+    const value = resolved[key];
+    if (typeof value === "string") {
+      resolved[key] = resolveRelativeUrl(value, baseUrl);
+    }
+  }
+
+  if (Array.isArray(resolved.imports)) {
+    resolved.imports = resolved.imports.map((value) =>
+      typeof value === "string" ? resolveRelativeUrl(value, baseUrl) : value,
+    );
+  }
+
+  return resolved;
+}
+
+function resolveHtmlAssetLinks(html: string, baseUrl?: string) {
+  if (!baseUrl || !baseUrl.startsWith("http")) return html;
+  return html.replace(
+    /(src|href)=(["'])([^"']+)\2/gi,
+    (match, attr, quote, value) => {
+      const resolved = resolveRelativeUrl(String(value), baseUrl);
+      return `${attr}=${quote}${resolved}${quote}`;
+    },
+  );
+}
+
+function resolveRelativeUrl(value: string, baseUrl: string) {
+  if (!isRelativeUrl(value)) return value;
+  try {
+    return new URL(value, baseUrl).toString();
+  } catch {
+    return value;
+  }
+}
+
+function isRelativeUrl(value: string) {
+  if (!value) return false;
+  if (value.startsWith("#")) return false;
+  if (value.startsWith("/")) return false;
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(value)) return false;
+  return true;
 }
 
 function getRedirectPath(path: string, from: string, to: string) {
