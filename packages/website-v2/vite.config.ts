@@ -4,13 +4,11 @@ import viteReact from "@vitejs/plugin-react";
 import viteTsConfigPaths from "vite-tsconfig-paths";
 import tailwindcss from "@tailwindcss/vite";
 import { registry } from "@inlang/marketplace-registry";
-import path from "node:path";
-import fs from "node:fs/promises";
-import { watch } from "node:fs";
 import { cloudflare } from "@cloudflare/vite-plugin";
 import { githubStarsPlugin } from "./src/ssg/github-stars-plugin";
+import { viteStaticCopy } from "vite-plugin-static-copy";
 
-const config = defineConfig(({ mode }) => {
+const config = defineConfig(({ mode, command, ssrBuild }) => {
   const isTest = process.env.VITEST === "true" || mode === "test";
   const env = loadEnv(mode, process.cwd(), "");
   const githubToken =
@@ -24,6 +22,16 @@ const config = defineConfig(({ mode }) => {
         projects: ["./tsconfig.json"],
       }),
       tailwindcss(),
+      !isTest &&
+        viteStaticCopy({
+          targets: [
+            {
+              src: "../../blog/**",
+              dest: ssrBuild ? "../client/blog" : "blog",
+            },
+          ],
+          watch: command === "serve" ? { reloadPageOnChange: true } : undefined,
+        }),
       tanstackStart({
         prerender: {
           enabled: true,
@@ -44,7 +52,6 @@ const config = defineConfig(({ mode }) => {
       }),
       viteReact(),
       !isTest && githubStarsPlugin({ token: githubToken }),
-      !isTest && blogAssetsPlugin(),
     ].filter(Boolean),
   };
 });
@@ -78,7 +85,7 @@ function getMarketplaceStaticPages() {
 }
 
 function flattenPages(
-  pages: Record<string, string> | Record<string, Record<string, string>>,
+  pages: Record<string, string> | Record<string, Record<string, string>>
 ) {
   const flatPages: Record<string, string> = {};
   for (const [key, value] of Object.entries(pages) as Array<
@@ -99,44 +106,4 @@ function flattenPages(
 
 function isMarkdownPath(path: string) {
   return path.endsWith(".md") || path.endsWith(".html");
-}
-
-function blogAssetsPlugin() {
-  const repoRoot = path.resolve(__dirname, "../..");
-  const blogDir = path.join(repoRoot, "blog");
-  const publicBlogDir = path.join(__dirname, "public", "blog");
-  let isCopying = false;
-  let needsCopy = false;
-
-  async function copyBlogAssets() {
-    if (isCopying) {
-      needsCopy = true;
-      return;
-    }
-    isCopying = true;
-    await fs.rm(publicBlogDir, { recursive: true, force: true });
-    await fs.cp(blogDir, publicBlogDir, { recursive: true });
-    isCopying = false;
-    if (needsCopy) {
-      needsCopy = false;
-      await copyBlogAssets();
-    }
-  }
-
-  return {
-    name: "inlang:blog-assets",
-    async buildStart() {
-      await copyBlogAssets();
-    },
-    async configureServer(server: any) {
-      await copyBlogAssets();
-      const watcher = watch(blogDir, { recursive: true }, async () => {
-        await copyBlogAssets();
-        server.ws.send({ type: "full-reload" });
-      });
-      server.httpServer?.once("close", () => {
-        watcher.close();
-      });
-    },
-  };
 }
