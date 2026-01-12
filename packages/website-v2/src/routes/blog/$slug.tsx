@@ -475,9 +475,36 @@ function BlogPostPage() {
           dangerouslySetInnerHTML={{ __html: html }}
         />
 
+        {/* Subscribe CTA */}
+        <form
+          action="https://buttondown.com/api/emails/embed-subscribe/inlangs-blog"
+          method="post"
+          target="_blank"
+          className="mt-16 border-t border-slate-200 pt-8"
+        >
+          <p className="text-sm text-slate-500 mb-3">
+            Get notified about new blog posts
+          </p>
+          <div className="flex gap-2">
+            <input
+              type="email"
+              name="email"
+              placeholder="your@email.com"
+              required
+              className="flex-1 px-4 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent"
+            />
+            <button
+              type="submit"
+              className="px-4 py-2 text-sm font-medium text-slate-900 border border-slate-300 rounded-md hover:bg-slate-50 transition-colors"
+            >
+              Subscribe
+            </button>
+          </div>
+        </form>
+
         {/* Previous / Next navigation */}
         {(prevPost || nextPost) && (
-          <nav className="mt-16 grid grid-cols-2 gap-4 border-t border-slate-200 pt-8">
+          <nav className="mt-8 grid grid-cols-2 gap-4">
             {/* Previous post (newer) */}
             <div>
               {prevPost && (
