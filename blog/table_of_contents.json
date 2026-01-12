@@ -48,12 +48,6 @@
     "authors": ["samuelstroschein"]
   },
   {
-    "path": "./notes-on-git-based-architecture/index.md",
-    "slug": "notes-on-git-based-architecture",
-    "date": "2022-03-01",
-    "authors": ["samuelstroschein"]
-  },
-  {
     "path": "./inlang-v0-2/index.md",
     "slug": "inlang-v0-2",
     "date": "2022-02-14",
