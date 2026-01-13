@@ -55,17 +55,28 @@ function serializeVariants(
 	const selectorConfig = resolveSelectorConfig(selector, declarations);
 	const isPluralContext = selectorConfig.type !== "select";
 
-	const prefix = commonPrefix(
+	const patterns = variants.map((variant) => variant.pattern);
+	const minPatternLength = Math.min(...patterns.map((pattern) => pattern.length));
+
+	const rawPrefix = commonPrefix(
 		variants.map((variant) => variant.pattern),
 		isPluralContext
 	);
-	const patternsWithoutPrefix = variants.map((variant) =>
-		variant.pattern.slice(prefix.length)
+	const prefixLength =
+		rawPrefix.length >= minPatternLength ? 0 : rawPrefix.length;
+	const patternsWithoutPrefix = patterns.map((pattern) =>
+		pattern.slice(prefixLength)
 	);
-	const suffix = commonSuffix(patternsWithoutPrefix, isPluralContext);
+	const rawSuffix = commonSuffix(patternsWithoutPrefix, isPluralContext);
+	const suffixLength =
+		rawSuffix.length >= minPatternLength - prefixLength
+			? 0
+			: rawSuffix.length;
+	const prefix = prefixLength === 0 ? [] : rawPrefix;
+	const suffix = suffixLength === 0 ? [] : rawSuffix;
 	const strippedVariants = variants.map((variant) => ({
 		...variant,
-		pattern: stripPattern(variant.pattern, prefix.length, suffix.length),
+		pattern: stripPattern(variant.pattern, prefixLength, suffixLength),
 	}));
 
 	const groups = new Map<string, Variant[]>();
