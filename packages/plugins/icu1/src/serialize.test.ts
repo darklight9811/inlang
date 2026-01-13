@@ -81,4 +81,22 @@ describe("serializeMessage", () => {
 			"The time is {when, time, short}."
 		);
 	});
+
+	it("returns empty output when selectors exist but no variants", () => {
+		const { bundle, message } = buildMessage(
+			"{gender, select, male {He} female {She} other {They}}"
+		);
+
+		expect(serializeMessage({ bundle, message, variants: [] })).toBe("");
+	});
+
+	it("keeps identical select cases intact", () => {
+		const { bundle, message, variants } = buildMessage(
+			"{gender, select, male {Hello} female {Hello} other {Hello}}"
+		);
+
+		expect(serializeMessage({ bundle, message, variants })).toBe(
+			"{gender, select, male {Hello} female {Hello} other {Hello}}"
+		);
+	});
 });

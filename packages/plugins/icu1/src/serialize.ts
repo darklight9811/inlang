@@ -36,8 +36,8 @@ function serializeVariants(
 	declarations: Declaration[],
 	inPlural: boolean
 ): string {
+	if (variants.length === 0) return "";
 	if (selectors.length === 0) {
-		if (variants.length === 0) return "";
 		return serializePattern(variants[0]!.pattern, { inPlural });
 	}
 
@@ -59,10 +59,10 @@ function serializeVariants(
 		variants.map((variant) => variant.pattern),
 		isPluralContext
 	);
-	const suffix = commonSuffix(
-		variants.map((variant) => variant.pattern),
-		isPluralContext
+	const patternsWithoutPrefix = variants.map((variant) =>
+		variant.pattern.slice(prefix.length)
 	);
+	const suffix = commonSuffix(patternsWithoutPrefix, isPluralContext);
 	const strippedVariants = variants.map((variant) => ({
 		...variant,
 		pattern: stripPattern(variant.pattern, prefix.length, suffix.length),
