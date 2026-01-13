@@ -1,5 +1,11 @@
 [
   {
+    "path": "./icu-messageformat-v1-plugin/index.md",
+    "slug": "icu-messageformat-v1-plugin",
+    "date": "2026-02-09",
+    "authors": ["samuelstroschein"]
+  },
+  {
     "path": "./human-readable-message-ids/index.md",
     "slug": "human-readable-message-ids",
     "date": "2026-01-13",
