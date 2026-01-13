@@ -222,7 +222,7 @@ function resolveHtmlAssetLinks(html: string, baseUrl?: string) {
   if (!baseUrl || !baseUrl.startsWith("http")) return html;
   return html.replace(
     /(src|href)=(["'])([^"']+)\2/gi,
-    (match, attr, quote, value) => {
+    (_match, attr, quote, value) => {
       const resolved = resolveRelativeUrl(String(value), baseUrl);
       return `${attr}=${quote}${resolved}${quote}`;
     },

@@ -8,7 +8,7 @@ import { cloudflare } from "@cloudflare/vite-plugin";
 import { githubStarsPlugin } from "./src/ssg/github-stars-plugin";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 
-const config = defineConfig(({ mode, command, ssrBuild }) => {
+const config = defineConfig(({ mode, command, isSsrBuild }) => {
   const isTest = process.env.VITEST === "true" || mode === "test";
   const env = loadEnv(mode, process.cwd(), "");
   const githubToken =
@@ -27,7 +27,7 @@ const config = defineConfig(({ mode, command, ssrBuild }) => {
           targets: [
             {
               src: "../../blog/**",
-              dest: ssrBuild ? "../client/blog" : "blog",
+              dest: isSsrBuild ? "../client/blog" : "blog",
             },
           ],
           watch: command === "serve" ? { reloadPageOnChange: true } : undefined,
