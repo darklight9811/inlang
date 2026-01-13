@@ -148,6 +148,7 @@ function expandTokens(
 			case "select":
 			case "plural":
 			case "selectordinal": {
+				ensureInputVariable(context, token.arg);
 				const selectorName =
 					token.type === "select"
 						? token.arg

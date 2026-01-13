@@ -42,6 +42,11 @@ describe("parseMessage", () => {
 				"{gender, select, male {He} female {She} other {They}}",
 		});
 
+		expect(parsed.declarations).toEqual(
+			expect.arrayContaining([
+				{ type: "input-variable", name: "gender" },
+			] satisfies Declaration[])
+		);
 		expect(parsed.selectors).toEqual([
 			{ type: "variable-reference", name: "gender" },
 		]);
@@ -53,6 +58,19 @@ describe("parseMessage", () => {
 				[{ type: "literal-match", key: "gender", value: "female" }],
 				[{ type: "catchall-match", key: "gender" }],
 			])
+		);
+	});
+
+	it("declares selector inputs without interpolation", () => {
+		const parsed = parseMessage({
+			...baseArgs,
+			messageSource: "{count, plural, one {item} other {items}}",
+		});
+
+		expect(parsed.declarations).toEqual(
+			expect.arrayContaining([
+				{ type: "input-variable", name: "count" },
+			] satisfies Declaration[])
 		);
 	});
 
