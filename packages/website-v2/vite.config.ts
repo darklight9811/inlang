@@ -8,7 +8,7 @@ import { cloudflare } from "@cloudflare/vite-plugin";
 import { githubStarsPlugin } from "./src/ssg/github-stars-plugin";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 
-const config = defineConfig(({ mode, command, isSsrBuild }) => {
+const config = defineConfig(({ mode, command }) => {
   const isTest = process.env.VITEST === "true" || mode === "test";
   const env = loadEnv(mode, process.cwd(), "");
   const githubToken =
@@ -27,7 +27,7 @@ const config = defineConfig(({ mode, command, isSsrBuild }) => {
           targets: [
             {
               src: "../../blog/**",
-              dest: isSsrBuild ? "../client/blog" : "blog",
+              dest: "../client/blog",
             },
           ],
           watch: command === "serve" ? { reloadPageOnChange: true } : undefined,
@@ -85,7 +85,7 @@ function getMarketplaceStaticPages() {
 }
 
 function flattenPages(
-  pages: Record<string, string> | Record<string, Record<string, string>>,
+  pages: Record<string, string> | Record<string, Record<string, string>>
 ) {
   const flatPages: Record<string, string> = {};
   for (const [key, value] of Object.entries(pages) as Array<
