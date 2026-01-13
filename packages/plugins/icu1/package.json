@@ -11,11 +11,11 @@
     "./dist"
   ],
   "scripts": {
-    "_dev": "node ./build.js",
-    "_build": "NODE_ENV=production node ./build.js",
-    "_test": "tsc --noEmit && vitest run --passWithNoTests",
-    "_format": "prettier ./src --write",
-    "_clean": "rm -rf ./dist ./node_modules"
+    "dev": "node ./build.js",
+    "build": "NODE_ENV=production node ./build.js",
+    "test": "tsc --noEmit && vitest run --passWithNoTests",
+    "format": "prettier ./src --write",
+    "clean": "rm -rf ./dist ./node_modules"
   },
   "devDependencies": {
     "@inlang/sdk": "workspace:*",
@@ -23,9 +23,9 @@
     "@sinclair/typebox": "^0.31.17",
     "typescript": "^5.5.2",
     "prettier": "3.3.3",
-    "vitest": "2.1.8"
+    "vitest": "^4.0.6"
   },
   "dependencies": {
-    "@formatjs/icu-messageformat-parser": "^2.7.8"
+    "@messageformat/parser": "^5.1.1"
   }
 }

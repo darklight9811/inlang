@@ -1,251 +1,355 @@
-// @ts-nocheck
+import { parse } from "@messageformat/parser";
+import type {
+	Content,
+	FunctionArg,
+	Octothorpe,
+	PlainArg,
+	Select,
+} from "@messageformat/parser";
+import type {
+	Declaration,
+	Expression,
+	FunctionReference,
+	LocalVariable,
+	Match,
+	Pattern,
+	VariableReference,
+	VariantImport,
+} from "@inlang/sdk";
 
-import {
-  parse as parseICU,
-  TYPE,
-  type MessageFormatElement,
-} from "@formatjs/icu-messageformat-parser";
-import type { MessageNested, Option, Pattern } from "@inlang/sdk2";
-
-/**
- * Represents a (partial) branch
- *
- * ICU1 Messages can have multiple sequential brances, eg: Two plurals after another. A "branch" represents
- * one path through these. For example "one" on the first plural and "many" on the second.
- *
- * 1. The values each variables needs in order to trigger this branch
- * 2. The pattern that gets rendered if this branch is triggered.
- *
- * These branches get compiled to variants afterwards.
- */
-type Branch = {
-  /**
-   * The (partial) Pattern that this branch results in
-   */
-  pattern: Pattern;
-
-  /**
-   * The (partial) match-values that are needed to produce this branch
-   * [arg, function?, match]
-   *
-   * Add options?
-   */
-  match: [string, string | undefined, string][];
+export type ParsedMessage = {
+	declarations: Declaration[];
+	selectors: VariableReference[];
+	variants: VariantImport[];
 };
 
-export const NULL_BRANCH: Branch = { pattern: [], match: [] };
+type Branch = {
+	pattern: Pattern;
+	matches: Match[];
+};
 
-/**
- * Takes in an ICU1 AST and returns all the branches it could generate
- * @param elements An array of AST elements
- * @param branch The current branch (pass a copy, may accidentally mutate)
- */
-export function generateBranches(
-  elements: MessageFormatElement[],
-  branch: Branch,
-  poundReference: string | undefined = undefined
-): Branch[] {
-  let branches: Branch[] = [structuredClone(branch)];
+type Token = Content | PlainArg | FunctionArg | Select | Octothorpe;
+type TokenList = Token[];
 
-  for (const element of elements) {
-    switch (element.type) {
-      case TYPE.literal: {
-        for (const branch of branches) {
-          branch.pattern.push({ type: "text", value: element.value });
-        }
-        break;
-      }
-      case TYPE.argument: {
-        for (const branch of branches) {
-          branch.pattern.push({
-            type: "expression",
-            arg: { type: "variable", name: element.value },
-          });
-        }
-        break;
-      }
-      case TYPE.time:
-      case TYPE.number:
-      case TYPE.date: {
-        let options: Option[] = [];
-        if (typeof element.style === "string") {
-          options = [
-            { name: "style", value: { type: "literal", name: element.style } },
-          ];
-        }
-        if (typeof element.style === "object" && element.style) {
-          options = Object.entries(element.style.parsedOptions).map(
-            ([key, value]) => ({
-              name: key,
-              value: { type: "literal", name: value },
-            })
-          );
-        }
+type PluralSelector = {
+	selectorName: string;
+	arg: string;
+	type: "plural" | "selectordinal";
+	offset?: number;
+};
 
-        const fnName = {
-          [TYPE.time]: "datetime",
-          [TYPE.number]: "number",
-          [TYPE.date]: "datetime",
-        } as const;
+type ParseContext = {
+	inputVariables: Map<string, Declaration>;
+	localVariables: Map<string, LocalVariable>;
+	selectors: string[];
+	pluralSelectors: Map<string, PluralSelector>;
+};
 
-        for (const branch of branches) {
-          branch.pattern.push({
-            type: "expression",
-            arg: { type: "variable", name: element.value },
-            annotation: {
-              type: "function",
-              name: fnName[element.type],
-              options,
-            },
-          });
-        }
-        break;
-      }
-      case TYPE.plural:
-      case TYPE.select: {
-        const newBranches: Branch[] = [];
+const NULL_BRANCH: Branch = { pattern: [], matches: [] };
 
-        for (const [option, optionValue] of Object.entries(element.options)) {
-          let selector: Branch["match"][number] | undefined = undefined;
+export function parseMessage(args: {
+	messageSource: string;
+	bundleId: string;
+	locale: string;
+}): ParsedMessage {
+	const tokens = parse(args.messageSource, {
+		strict: false,
+	}) as TokenList;
 
-          if (element.type === TYPE.select && option !== "other") {
-            selector = [element.value, undefined, option];
-          }
+	const context: ParseContext = {
+		inputVariables: new Map(),
+		localVariables: new Map(),
+		selectors: [],
+		pluralSelectors: new Map(),
+	};
 
-          if (element.type === TYPE.plural && option !== "other") {
-            if (option.startsWith("=")) {
-              const exact = option.slice(1); // remove the "=" before the number
-              selector = [element.value, undefined, exact];
-            } else {
-              selector = [element.value, "plural", option];
-            }
-          }
+	const branches = expandTokens(tokens, NULL_BRANCH, context, undefined);
 
-          for (const existingBranch of branches) {
-            const newBranchesForBranch = generateBranches(
-              optionValue.value,
-              {
-                ...existingBranch,
-                match: selector
-                  ? [...existingBranch.match, selector]
-                  : existingBranch.match,
-              },
-              element.value
-            );
-            newBranches.push(...newBranchesForBranch);
-          }
-        }
+	const declarations = [
+		...context.inputVariables.values(),
+		...context.localVariables.values(),
+	];
 
-        branches = newBranches;
-        break;
-      }
-      case TYPE.pound: {
-        for (const branch of branches) {
-          if (poundReference) {
-            branch.pattern.push({
-              type: "expression",
-              arg: {
-                type: "variable",
-                name: poundReference,
-              },
-            });
-          } else {
-            throw new Error("Unexpected pound element");
-          }
-        }
-        break;
-      }
-      case TYPE.tag:
-      default: {
-        throw new Error("Unkown element type " + element.type);
-      }
-    }
-  }
+	const selectors: VariableReference[] = context.selectors.map((name) => ({
+		type: "variable-reference",
+		name,
+	}));
 
-  return branches;
+	const variants: VariantImport[] = branches.map((branch) => ({
+		messageBundleId: args.bundleId,
+		messageLocale: args.locale,
+		matches: branch.matches,
+		pattern: branch.pattern,
+	}));
+
+	return { declarations, selectors, variants };
 }
 
-export function createMessage({
-  messageSource,
-  bundleId,
-  locale,
-}: {
-  messageSource: string;
-  bundleId: string;
-  locale: string;
-}): MessageNested {
-  const ast = parseICU(messageSource, {
-    ignoreTag: true, // TODO: Change once we support markup
-    requiresOtherClause: false,
-    locale: new Intl.Locale(locale),
-    shouldParseSkeletons: true,
-  });
-  const branches = generateBranches(ast, NULL_BRANCH);
+function expandTokens(
+	tokens: TokenList,
+	branch: Branch,
+	context: ParseContext,
+	pluralContext: { arg: string } | undefined
+): Branch[] {
+	let branches: Branch[] = [cloneBranch(branch)];
 
-  const inputs = new Set<string>();
-  for (const branch of branches) {
-    for (const elem of branch.pattern) {
-      if (elem.type === "expression") {
-        inputs.add(elem.arg.name);
-      }
-    }
-    for (const selector of branch.match) {
-      inputs.add(selector[0]);
-    }
-  }
+	for (const token of tokens) {
+		switch (token.type) {
+			case "content": {
+				for (const current of branches) {
+					current.pattern.push({ type: "text", value: token.value });
+				}
+				break;
+			}
+			case "argument": {
+				ensureInputVariable(context, token.arg);
+				for (const current of branches) {
+					current.pattern.push({
+						type: "expression",
+						arg: { type: "variable-reference", name: token.arg },
+					});
+				}
+				break;
+			}
+			case "function": {
+				ensureInputVariable(context, token.arg);
+				const annotation = functionAnnotation(token.key, token.param);
+				for (const current of branches) {
+					current.pattern.push({
+						type: "expression",
+						arg: { type: "variable-reference", name: token.arg },
+						annotation,
+					});
+				}
+				break;
+			}
+			case "octothorpe": {
+				if (!pluralContext) {
+					for (const current of branches) {
+						current.pattern.push({ type: "text", value: "#" });
+					}
+					break;
+				}
 
-  // each unique pair of [variable, function] in the branche's matchers will become a selector
-  const selectors: [string, string | undefined][] = [];
-  for (const branch of branches) {
-    for (const [selectorVariable, selectorFunction] of branch.match) {
-      const selector: [string, string | undefined] = [
-        selectorVariable,
-        selectorFunction,
-      ];
-      const alreadyExists = selectors.find(
-        (s) => s[0] === selector[0] && s[1] === selector[1]
-      );
-      if (alreadyExists) continue;
-      else selectors.push(selector);
-    }
-  }
+				ensureInputVariable(context, pluralContext.arg);
+				for (const current of branches) {
+					current.pattern.push({
+						type: "expression",
+						arg: { type: "variable-reference", name: pluralContext.arg },
+						annotation: {
+							type: "function-reference",
+							name: "icu:pound",
+							options: [],
+						},
+					});
+				}
+				break;
+			}
+			case "select":
+			case "plural":
+			case "selectordinal": {
+				const selectorName =
+					token.type === "select"
+						? token.arg
+						: ensurePluralSelector(context, {
+							arg: token.arg,
+							type: token.type,
+							offset: token.pluralOffset,
+						});
+				if (!context.selectors.includes(selectorName)) {
+					context.selectors.push(selectorName);
+				}
 
-  const messageId = `${bundleId}_${locale}`;
+				const nextBranches: Branch[] = [];
+				for (const selectCase of token.cases) {
+					const match = matchForCase(selectorName, selectCase.key);
+					for (const current of branches) {
+						const branchMatches = match
+							? [...current.matches, match]
+							: current.matches;
+						const newBranch = cloneBranch({
+							pattern: current.pattern,
+							matches: branchMatches,
+						});
+						const expanded = expandTokens(
+							selectCase.tokens,
+							newBranch,
+							context,
+							token.type === "select" ? pluralContext : { arg: token.arg }
+						);
+						nextBranches.push(...expanded);
+					}
+				}
+				branches = nextBranches;
+				break;
+			}
+			default: {
+				const exhaustive: never = token;
+				throw new Error(`Unsupported token type ${(exhaustive as any)?.type}`);
+			}
+		}
+	}
 
-  const message: MessageNested = {
-    id: messageId,
-    bundleId,
-    locale,
-    declarations: [...inputs].map((name) => ({
-      type: "input",
-      name,
-      value: { type: "expression", arg: { type: "variable", name } },
-    })),
-    selectors: selectors.map(([name, fn]) => ({
-      type: "expression",
-      arg: { type: "variable", name },
-      annotation: fn ? { type: "function", name: fn, options: [] } : undefined,
-    })),
-    variants: branches.map((branch) => {
-      const match = {};
-      // TODO support named matchers
-      // selectors.map(([name, fn]) => {
-      // 	const matches = branch.match.find((m) => m[0] === name && m[1] === fn)
-      // 	if (matches) return matches[2]
-      // 	else return "*"
-      // })
+	return branches;
+}
 
-      // TODO support named matchers
-      //const variantId = `${messageId}_${match.map((m) => (m === "*" ? "any" : m)).join("_")}`
-      const variantId = `${messageId}_any`;
-      return {
-        id: variantId,
-        messageId,
-        match,
-        pattern: branch.pattern,
-      };
-    }),
-  };
+function ensureInputVariable(context: ParseContext, name: string) {
+	if (!context.inputVariables.has(name)) {
+		context.inputVariables.set(name, {
+			type: "input-variable",
+			name,
+		});
+	}
+}
 
-  return message;
+function ensurePluralSelector(
+	context: ParseContext,
+	args: { arg: string; type: "plural" | "selectordinal"; offset?: number }
+): string {
+	const key = `${args.arg}|${args.type}|${args.offset ?? 0}`;
+	const existing = context.pluralSelectors.get(key);
+	if (existing) return existing.selectorName;
+
+	const baseName = args.type === "selectordinal" ? `${args.arg}Ordinal` : `${args.arg}Plural`;
+	let selectorName = baseName;
+	let suffix = 1;
+	while (context.localVariables.has(selectorName)) {
+		selectorName = `${baseName}${suffix}`;
+		suffix += 1;
+	}
+
+	const options = [] as FunctionReference["options"];
+	if (args.type === "selectordinal") {
+		options.push({ name: "type", value: { type: "literal", value: "ordinal" } });
+	}
+	if (args.offset && args.offset !== 0) {
+		options.push({
+			name: "offset",
+			value: { type: "literal", value: String(args.offset) },
+		});
+	}
+
+	const localVariable: LocalVariable = {
+		type: "local-variable",
+		name: selectorName,
+		value: {
+			type: "expression",
+			arg: { type: "variable-reference", name: args.arg },
+			annotation: {
+				type: "function-reference",
+				name: "plural",
+				options,
+			},
+		},
+	};
+
+	context.localVariables.set(selectorName, localVariable);
+	context.pluralSelectors.set(key, {
+		selectorName,
+		arg: args.arg,
+		type: args.type,
+		offset: args.offset,
+	});
+
+	return selectorName;
+}
+
+function matchForCase(selectorName: string, key: string): Match | undefined {
+	if (key === "other") {
+		return {
+			type: "catchall-match",
+			key: selectorName,
+		};
+	}
+
+	return {
+		type: "literal-match",
+		key: selectorName,
+		value: key,
+	};
+}
+
+function functionAnnotation(
+	name: string,
+	param?: TokenList
+): Expression["annotation"] {
+	const options: FunctionReference["options"] = [];
+	const style = param
+		? serializeTokens(param, { inPlural: false }).trim()
+		: undefined;
+	if (style && style.length > 0) {
+		options.push({ name: "style", value: { type: "literal", value: style } });
+	}
+
+	return {
+		type: "function-reference",
+		name,
+		options,
+	};
+}
+
+function serializeTokens(
+	tokens: TokenList,
+	options: { inPlural: boolean }
+): string {
+	let result = "";
+	for (const token of tokens) {
+		switch (token.type) {
+			case "content":
+				result += escapeText(token.value, options);
+				break;
+			case "argument":
+				result += `{${token.arg}}`;
+				break;
+			case "function": {
+				const style = token.param
+					? `, ${serializeTokens(token.param, { inPlural: false })}`
+					: "";
+				result += `{${token.arg}, ${token.key}${style}}`;
+				break;
+			}
+			case "octothorpe":
+				result += "#";
+				break;
+			case "select":
+			case "plural":
+			case "selectordinal": {
+				let header = `${token.arg}, ${token.type},`;
+				if (token.pluralOffset && token.pluralOffset !== 0) {
+					header += ` offset:${token.pluralOffset}`;
+				}
+				const cases = token.cases
+					.map(
+						(selectCase) =>
+							`${selectCase.key} {${serializeTokens(selectCase.tokens, {
+								inPlural: token.type !== "select",
+							})}}`
+					)
+					.join(" ");
+				result += `{${header} ${cases}}`;
+				break;
+			}
+			default: {
+				const exhaustive: never = token;
+				throw new Error(`Unsupported token type ${(exhaustive as any)?.type}`);
+			}
+		}
+	}
+	return result;
+}
+
+function escapeText(value: string, options: { inPlural: boolean }): string {
+	let escaped = value.replace(/'/g, "''");
+	escaped = escaped.replace(/\{/g, "'{'").replace(/\}/g, "'}'");
+	if (options.inPlural) {
+		escaped = escaped.replace(/#/g, "'#'");
+	}
+	return escaped;
+}
+
+function cloneBranch(branch: Branch): Branch {
+	return {
+		pattern: branch.pattern.map((part: Pattern[number]) => ({ ...part })),
+		matches: branch.matches.map((match: Match) => ({ ...match })),
+	};
 }

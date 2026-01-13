@@ -1,306 +1,310 @@
-// @ts-nocheck
+import type {
+	Bundle,
+	Declaration,
+	Expression,
+	FunctionReference,
+	Message,
+	Pattern,
+	Variant,
+	VariableReference,
+} from "@inlang/sdk";
 
-import type { Expression, MessageNested, Pattern, Variant } from "@inlang/sdk";
-import {
-  TYPE,
-  type MessageFormatElement,
-  type PluralOrSelectOption,
-} from "@formatjs/icu-messageformat-parser";
+const POUND_FUNCTION = "icu:pound";
 
-export function serializeMessage(message: MessageNested): string {
-  const ast = variantsToICU1(message.variants, message.selectors);
-  return serializeICU1Message(ast);
+export function serializeMessage(args: {
+	bundle: Bundle;
+	message: Message;
+	variants: Variant[];
+}): string {
+	const { bundle, message, variants } = args;
+	if (message.selectors.length === 0) {
+		if (variants.length === 0) return "";
+		return serializePattern(variants[0]!.pattern, { inPlural: false });
+	}
+
+	return serializeVariants(
+		variants,
+		message.selectors,
+		bundle.declarations,
+		false
+	);
 }
 
-function variantsToICU1(
-  variants: Variant[],
-  selectors: Expression[]
-): MessageFormatElement[] {
-  const [selector, ...remainingSelectors] = selectors;
+function serializeVariants(
+	variants: Variant[],
+	selectors: VariableReference[],
+	declarations: Declaration[],
+	inPlural: boolean
+): string {
+	if (selectors.length === 0) {
+		if (variants.length === 0) return "";
+		return serializePattern(variants[0]!.pattern, { inPlural });
+	}
 
-  // if there are no selectors, just return the variant's pattern transpiled to ICU1
-  if (!selector) {
-    const variant = variants[0];
-    if (!variant || variants.length > 1)
-      throw new Error("Expected exactly one variant");
-    return patternToICU1(variant.pattern);
-  }
+	const nextSelectorIndex = selectors.findIndex((candidate) =>
+		variants.some((variant) =>
+			variant.matches.some((match) => match.key === candidate.name)
+		)
+	);
+	if (nextSelectorIndex === -1) {
+		return serializePattern(variants[0]!.pattern, { inPlural });
+	}
 
-  // if there are selectors left, create a select/plural and recursively call this function for each branch
-  // TODO, exact plurals and selectordinal and options
-  const type =
-    selector.annotation?.name === "plural" ? TYPE.plural : TYPE.select;
+	const selector = selectors[nextSelectorIndex]!;
+	const restSelectors = selectors.slice(nextSelectorIndex + 1);
+	const selectorConfig = resolveSelectorConfig(selector, declarations);
+	const isPluralContext = selectorConfig.type !== "select";
 
-  const sharedPrefixPattern = commonPrefix(
-    variants.map((variants) => variants.pattern)
-  );
+	const prefix = commonPrefix(
+		variants.map((variant) => variant.pattern),
+		isPluralContext
+	);
+	const suffix = commonSuffix(
+		variants.map((variant) => variant.pattern),
+		isPluralContext
+	);
+	const strippedVariants = variants.map((variant) => ({
+		...variant,
+		pattern: stripPattern(variant.pattern, prefix.length, suffix.length),
+	}));
 
-  // remove the shared prefix from all variants
-  variants = variants.map((variants) => {
-    return {
-      ...variants,
-      pattern: variants.pattern.slice(sharedPrefixPattern.length),
-    };
-  });
+	const groups = new Map<string, Variant[]>();
+	for (const variant of strippedVariants) {
+		const match = variant.matches.find(
+			(entry: Variant["matches"][number]) => entry.key === selector.name
+		);
+		const key = matchKey(match);
+		const current = groups.get(key) ?? [];
+		current.push(removeMatchForSelector(variant, selector.name));
+		groups.set(key, current);
+	}
 
-  const sharedSuffixPattern = commonSuffix(
-    variants.map((variants) => variants.pattern)
-  );
-  // remove the shared suffix from all variants
-  variants = variants.map((variants) => {
-    return {
-      ...variants,
-      pattern: variants.pattern.slice(
-        0,
-        variants.pattern.length - sharedSuffixPattern.length
-      ),
-    };
-  });
+	const cases = Array.from(groups.entries()).map(([key, groupVariants]) => {
+		const caseKey = caseKeyFromMatch(key);
+		const tokens = serializeVariants(
+			groupVariants,
+			restSelectors,
+			declarations,
+			isPluralContext
+		);
+		return `${caseKey} {${tokens}}`;
+	});
 
-  // group variants by selector value
-  // TODO match is an object instead of an array now
-  // const variantGroups = Object.groupBy(variants, (variant) => variant.match[0])
-  const variantGroups = Object.groupBy(variants, () => "*");
+	let header = `${selectorConfig.arg}, ${selectorConfig.type},`;
+	if (selectorConfig.offset && selectorConfig.offset !== 0) {
+		header += ` offset:${selectorConfig.offset}`;
+	}
 
-  const options: Record<string, PluralOrSelectOption> = {};
-  for (const [selectorValue, variants] of Object.entries(variantGroups)) {
-    if (!variants) continue;
+	const select = `{${header} ${cases.join(" ")}}`;
 
-    const branch = selectorValue === "*" ? "other" : selectorValue;
-
-    // remove the selector we just selected over from the variant's matches
-    const newVariants = variants.map((variant) => {
-      return {
-        ...variant,
-        // TODO match is an object instead of an array now
-        // match: {variant.match.slice(1)},
-        match: {},
-      };
-    });
-
-    const optionPattern = variantsToICU1(newVariants, remainingSelectors);
-    if (optionPattern.length !== 0) {
-      options[branch] = {
-        value: optionPattern,
-      };
-    }
-  }
-
-  // if there are no options, just return []
-  if (Object.keys(options).length === 0)
-    return [
-      ...patternToICU1(sharedPrefixPattern),
-      ...patternToICU1(sharedSuffixPattern),
-    ];
-
-  return [
-    ...patternToICU1(sharedPrefixPattern),
-    {
-      type,
-      pluralType: type === TYPE.plural ? "cardinal" : undefined,
-      value: selector.arg.name,
-      options,
-    },
-    ...patternToICU1(sharedSuffixPattern),
-  ] as MessageFormatElement[];
+	return [
+		serializePattern(prefix, { inPlural }),
+		select,
+		serializePattern(suffix, { inPlural }),
+	].join("");
 }
 
-/**
- * Returns the common prefix of all the patterns
- */
-function commonPrefix(patterns: Pattern[]): Pattern {
-  const prefix: Pattern = [];
-
-  for (
-    let i = 0;
-    i < Math.min(...patterns.map((pattern) => pattern.length));
-    i++
-  ) {
-    const elementsAtIndex = patterns
-      .map((pattern) => pattern[i])
-      .filter((p) => !!p);
-    const baseElemenet = elementsAtIndex[0];
-    if (!baseElemenet) break;
-
-    const allEqual = elementsAtIndex.reduce(
-      (acc, el) => acc && patternElementsAreEqual(el, baseElemenet),
-      true
-    );
-    if (!allEqual) break;
-    prefix.push(baseElemenet);
-  }
-
-  return prefix;
+function matchKey(match: Variant["matches"][number] | undefined): string {
+	if (!match || match.type === "catchall-match") return "*";
+	return match.value;
 }
 
-function commonSuffix(patterns: Pattern[]): Pattern {
-  const suffix: Pattern = [];
-
-  for (
-    let i = 0;
-    i < Math.min(...patterns.map((pattern) => pattern.length));
-    i++
-  ) {
-    const elementsAtIndex = patterns
-      .map((pattern) => pattern[pattern.length - 1 - i])
-      .filter((p) => !!p);
-    const baseElemenet = elementsAtIndex[0];
-    if (!baseElemenet) break;
-
-    const allEqual = elementsAtIndex.reduce(
-      (acc, el) => acc && patternElementsAreEqual(el, baseElemenet),
-      true
-    );
-    if (!allEqual) break;
-    suffix.unshift(baseElemenet);
-  }
-
-  return suffix;
+function caseKeyFromMatch(match: string): string {
+	if (match === "*" || match === "other") return "other";
+	return match;
 }
 
-function patternElementsAreEqual(
-  el_a: Pattern[number],
-  el_b: Pattern[number]
+function removeMatchForSelector(variant: Variant, selectorName: string): Variant {
+	return {
+		...variant,
+		matches: variant.matches.filter(
+			(entry: Variant["matches"][number]) => entry.key !== selectorName
+		),
+	};
+}
+
+function resolveSelectorConfig(
+	selector: VariableReference,
+	declarations: Declaration[]
+): {
+	type: "select" | "plural" | "selectordinal";
+	arg: string;
+	offset?: number;
+} {
+	const local = declarations.find(
+		(declaration) =>
+			declaration.type === "local-variable" &&
+			declaration.name === selector.name
+	) as Declaration | undefined;
+
+	if (
+		local &&
+		local.type === "local-variable" &&
+		local.value.annotation?.type === "function-reference" &&
+		local.value.annotation?.name === "plural"
+	) {
+		const arg =
+			local.value.arg.type === "variable-reference"
+				? local.value.arg.name
+				: selector.name;
+		const typeOption = optionValue(local.value.annotation, "type");
+		const offsetOption = optionValue(local.value.annotation, "offset");
+		return {
+			type: typeOption === "ordinal" ? "selectordinal" : "plural",
+			arg,
+			offset: offsetOption ? Number(offsetOption) : undefined,
+		};
+	}
+
+	return {
+		type: "select",
+		arg: selector.name,
+	};
+}
+
+function optionValue(annotation: FunctionReference, name: string): string | undefined {
+	const option = annotation.options.find(
+		(entry: FunctionReference["options"][number]) => entry.name === name
+	);
+	if (!option || option.value.type !== "literal") return undefined;
+	return option.value.value;
+}
+
+function serializePattern(pattern: Pattern, options: { inPlural: boolean }): string {
+	return pattern
+		.map((part: Pattern[number]) => {
+			if (part.type === "text") {
+				return escapeText(part.value, options);
+			}
+			return serializeExpression(part, options);
+		})
+		.join("");
+}
+
+function serializeExpression(
+	expression: Expression,
+	options: { inPlural: boolean }
+): string {
+	if (
+		expression.annotation?.type === "function-reference" &&
+		expression.annotation.name === POUND_FUNCTION
+	) {
+		return "#";
+	}
+
+	const arg =
+		expression.arg.type === "variable-reference"
+			? expression.arg.name
+			: expression.arg.value;
+
+	if (!expression.annotation) {
+		return `{${arg}}`;
+	}
+
+	const style = optionValue(expression.annotation, "style");
+	if (style) {
+		return `{${arg}, ${expression.annotation.name}, ${style}}`;
+	}
+	return `{${arg}, ${expression.annotation.name}}`;
+}
+
+function escapeText(value: string, options: { inPlural: boolean }): string {
+	let escaped = value.replace(/'/g, "''");
+	escaped = escaped.replace(/\{/g, "'{'").replace(/\}/g, "'}'");
+	if (options.inPlural) {
+		escaped = escaped.replace(/#/g, "'#'");
+	}
+	return escaped;
+}
+
+export const _private = {
+	serializePattern,
+	resolveSelectorConfig,
+};
+
+function stripPattern(
+	pattern: Pattern,
+	prefixLength: number,
+	suffixLength: number
+): Pattern {
+	return pattern.slice(prefixLength, pattern.length - suffixLength);
+}
+
+function commonPrefix(patterns: Pattern[], avoidPound: boolean): Pattern {
+	const prefix: Pattern = [];
+	const minLength = Math.min(...patterns.map((pattern) => pattern.length));
+	for (let i = 0; i < minLength; i += 1) {
+		const base = patterns[0]?.[i];
+		if (!base) break;
+		if (avoidPound && isPoundExpression(base)) break;
+		if (patterns.every((pattern) => patternElementsEqual(pattern[i], base))) {
+			prefix.push(base);
+		} else {
+			break;
+		}
+	}
+	return prefix;
+}
+
+function commonSuffix(patterns: Pattern[], avoidPound: boolean): Pattern {
+	const suffix: Pattern = [];
+	const minLength = Math.min(...patterns.map((pattern) => pattern.length));
+	for (let i = 0; i < minLength; i += 1) {
+		const base = patterns[0]?.[patterns[0]!.length - 1 - i];
+		if (!base) break;
+		if (avoidPound && isPoundExpression(base)) break;
+		if (
+			patterns.every((pattern) =>
+				patternElementsEqual(
+					pattern[pattern.length - 1 - i],
+					base
+				)
+			)
+		) {
+			suffix.unshift(base);
+		} else {
+			break;
+		}
+	}
+	return suffix;
+}
+
+function patternElementsEqual(
+	left: Pattern[number] | undefined,
+	right: Pattern[number] | undefined
 ): boolean {
-  if (el_a.type !== el_b.type) return false;
-  if (el_a.type === "text" && el_b.type === "text") {
-    return el_a.value === el_b.value;
-  }
+	if (!left || !right || left.type !== right.type) return false;
+	if (left.type === "text" && right.type === "text") {
+		return left.value === right.value;
+	}
+	if (left.type === "expression" && right.type === "expression") {
+		if (left.arg.type !== right.arg.type) return false;
+		if (left.arg.type === "variable-reference") {
+			if (
+				right.arg.type !== "variable-reference" ||
+				left.arg.name !== right.arg.name
+			) {
+				return false;
+			}
+		} else if (
+			right.arg.type !== "literal" ||
+			left.arg.value !== right.arg.value
+		) {
+			return false;
+		}
 
-  if (el_a.type === "expression" && el_b.type === "expression") {
-    // must have the same arg
-    if (el_a.arg.name !== el_b.arg.name) return false;
-
-    // if one has an annotation, the other one must have one aswell
-    if (el_a.annotation && !el_b.annotation) return false;
-    if (!el_a.annotation && el_b.annotation) return false;
-
-    // if both have annotations, they must be the same
-    if (el_a.annotation && el_b.annotation) {
-      if (el_a.annotation.name !== el_b.annotation.name) return false;
-      if (!recordsAreEqual(el_a.annotation.options, el_b.annotation.options))
-        return false;
-    }
-  }
-
-  return true;
+		if (!left.annotation && !right.annotation) return true;
+		if (!left.annotation || !right.annotation) return false;
+		if (left.annotation.name !== right.annotation.name) return false;
+		return JSON.stringify(left.annotation.options) === JSON.stringify(right.annotation.options);
+	}
+	return false;
 }
 
-function recordsAreEqual(
-  a: Record<string, any>,
-  b: Record<string, any>
-): boolean {
-  // same size
-  if (Object.keys(a).length !== Object.keys(b).length) return false;
-
-  // same keys and values
-  for (const key in a) {
-    if (a[key] !== b[key]) return false;
-  }
-
-  return true;
+function isPoundExpression(part: Pattern[number]): boolean {
+	return (
+		part.type === "expression" &&
+		part.annotation?.type === "function-reference" &&
+		part.annotation.name === POUND_FUNCTION
+	);
 }
-
-function patternToICU1(pattern: Pattern): MessageFormatElement[] {
-  return pattern.map((icu2El): MessageFormatElement => {
-    if (icu2El.type === "text") {
-      return { type: TYPE.literal, value: icu2El.value };
-    }
-
-    // expression
-    if (!icu2El.annotation) {
-      // variable interpolation
-      return { type: TYPE.argument, value: icu2El.arg.name };
-    }
-
-    // function
-    const type = (
-      {
-        time: TYPE.time,
-        number: TYPE.number,
-        date: TYPE.date,
-      } as const
-    )[icu2El.annotation.name];
-    if (type === undefined)
-      throw new Error(`Unsupported function ${icu2El.annotation.name}`);
-
-    return { type, value: icu2El.arg.name };
-  });
-}
-
-/**
- * @param element An ICU1 ast
- * @returns The serialized ICU1 MessageFormat string
- * @private Only exported for tests
- */
-function serializeICU1Message(elements: MessageFormatElement[]): string {
-  let result = "";
-
-  for (const element of elements) {
-    switch (element.type) {
-      case TYPE.literal: {
-        result += element.value;
-        break;
-      }
-      case TYPE.argument: {
-        result += "{" + element.value + "}";
-        break;
-      }
-      case TYPE.time:
-      case TYPE.number:
-      case TYPE.date: {
-        const fnName = {
-          [TYPE.time]: "time",
-          [TYPE.number]: "number",
-          [TYPE.date]: "date",
-        }[element.type];
-
-        result +=
-          "{" + element.value + ", " + fnName + element.style
-            ? ", " + element.style
-            : "" + "}";
-
-        break;
-      }
-      // case added for completeness. We don't generate pound-elements yet, but it could be done
-      case TYPE.pound:
-        result += "#";
-        break;
-      case TYPE.select: {
-        const options: string[] = [];
-        for (const [name, value] of Object.entries(element.options)) {
-          options.push(name + " {" + serializeICU1Message(value.value) + "}");
-        }
-        result += "{" + element.value + ", select, " + options.join(" ") + "}";
-        break;
-      }
-      case TYPE.plural: {
-        const fnName = {
-          ordinal: "selectOrdinal",
-          cardinal: "plural",
-        }[element.pluralType || "cardinal"];
-
-        const options: string[] = [];
-        for (const [name, value] of Object.entries(element.options)) {
-          options.push(name + " {" + serializeICU1Message(value.value) + "}");
-        }
-
-        result +=
-          "{" + element.value + ", " + fnName + ", " + options.join(" ") + "}";
-        break;
-      }
-
-      case TYPE.tag: // we don't support markup yet. This should be a text-element instead
-      default: {
-        throw new Error(
-          `Unsupported ICU1 element of type: ${(element as any)?.type}`
-        );
-      }
-    }
-  }
-
-  return result;
-}
-
-// Exports for testing
-export { serializeICU1Message as _serializeICU1Message };
