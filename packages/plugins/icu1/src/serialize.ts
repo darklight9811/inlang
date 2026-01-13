@@ -1,321 +1,330 @@
 import type {
-	Bundle,
-	Declaration,
-	Expression,
-	FunctionReference,
-	Message,
-	Pattern,
-	Variant,
-	VariableReference,
+  Bundle,
+  Declaration,
+  Expression,
+  FunctionReference,
+  Message,
+  Pattern,
+  Variant,
+  VariableReference,
 } from "@inlang/sdk";
 
 const POUND_FUNCTION = "icu:pound";
 
 export function serializeMessage(args: {
-	bundle: Bundle;
-	message: Message;
-	variants: Variant[];
+  bundle: Bundle;
+  message: Message;
+  variants: Variant[];
 }): string {
-	const { bundle, message, variants } = args;
-	if (message.selectors.length === 0) {
-		if (variants.length === 0) return "";
-		return serializePattern(variants[0]!.pattern, { inPlural: false });
-	}
+  const { bundle, message, variants } = args;
+  if (message.selectors.length === 0) {
+    if (variants.length === 0) return "";
+    return serializePattern(variants[0]!.pattern, { inPlural: false });
+  }
 
-	return serializeVariants(
-		variants,
-		message.selectors,
-		bundle.declarations,
-		false
-	);
+  return serializeVariants(
+    variants,
+    message.selectors,
+    bundle.declarations,
+    false,
+  );
 }
 
 function serializeVariants(
-	variants: Variant[],
-	selectors: VariableReference[],
-	declarations: Declaration[],
-	inPlural: boolean
+  variants: Variant[],
+  selectors: VariableReference[],
+  declarations: Declaration[],
+  inPlural: boolean,
 ): string {
-	if (variants.length === 0) return "";
-	if (selectors.length === 0) {
-		return serializePattern(variants[0]!.pattern, { inPlural });
-	}
+  if (variants.length === 0) return "";
+  if (selectors.length === 0) {
+    return serializePattern(variants[0]!.pattern, { inPlural });
+  }
 
-	const nextSelectorIndex = selectors.findIndex((candidate) =>
-		variants.some((variant) =>
-			variant.matches.some((match) => match.key === candidate.name)
-		)
-	);
-	if (nextSelectorIndex === -1) {
-		return serializePattern(variants[0]!.pattern, { inPlural });
-	}
+  const nextSelectorIndex = selectors.findIndex((candidate) =>
+    variants.some((variant) =>
+      variant.matches.some((match) => match.key === candidate.name),
+    ),
+  );
+  if (nextSelectorIndex === -1) {
+    return serializePattern(variants[0]!.pattern, { inPlural });
+  }
 
-	const selector = selectors[nextSelectorIndex]!;
-	const restSelectors = selectors.slice(nextSelectorIndex + 1);
-	const selectorConfig = resolveSelectorConfig(selector, declarations);
-	const isPluralContext = selectorConfig.type !== "select";
+  const selector = selectors[nextSelectorIndex]!;
+  const restSelectors = selectors.slice(nextSelectorIndex + 1);
+  const selectorConfig = resolveSelectorConfig(selector, declarations);
+  const isPluralContext = selectorConfig.type !== "select";
 
-	const patterns = variants.map((variant) => variant.pattern);
-	const minPatternLength = Math.min(...patterns.map((pattern) => pattern.length));
+  const patterns = variants.map((variant) => variant.pattern);
+  const minPatternLength = Math.min(
+    ...patterns.map((pattern) => pattern.length),
+  );
 
-	const rawPrefix = commonPrefix(
-		variants.map((variant) => variant.pattern),
-		isPluralContext
-	);
-	const prefixLength =
-		rawPrefix.length >= minPatternLength ? 0 : rawPrefix.length;
-	const patternsWithoutPrefix = patterns.map((pattern) =>
-		pattern.slice(prefixLength)
-	);
-	const rawSuffix = commonSuffix(patternsWithoutPrefix, isPluralContext);
-	const suffixLength =
-		rawSuffix.length >= minPatternLength - prefixLength
-			? 0
-			: rawSuffix.length;
-	const prefix = prefixLength === 0 ? [] : rawPrefix;
-	const suffix = suffixLength === 0 ? [] : rawSuffix;
-	const strippedVariants = variants.map((variant) => ({
-		...variant,
-		pattern: stripPattern(variant.pattern, prefixLength, suffixLength),
-	}));
+  const rawPrefix = commonPrefix(
+    variants.map((variant) => variant.pattern),
+    isPluralContext,
+  );
+  const prefixLength =
+    rawPrefix.length >= minPatternLength ? 0 : rawPrefix.length;
+  const patternsWithoutPrefix = patterns.map((pattern) =>
+    pattern.slice(prefixLength),
+  );
+  const rawSuffix = commonSuffix(patternsWithoutPrefix, isPluralContext);
+  const suffixLength =
+    rawSuffix.length >= minPatternLength - prefixLength ? 0 : rawSuffix.length;
+  const prefix = prefixLength === 0 ? [] : rawPrefix;
+  const suffix = suffixLength === 0 ? [] : rawSuffix;
+  const strippedVariants = variants.map((variant) => ({
+    ...variant,
+    pattern: stripPattern(variant.pattern, prefixLength, suffixLength),
+  }));
 
-	const groups = new Map<string, Variant[]>();
-	for (const variant of strippedVariants) {
-		const match = variant.matches.find(
-			(entry: Variant["matches"][number]) => entry.key === selector.name
-		);
-		const key = matchKey(match);
-		const current = groups.get(key) ?? [];
-		current.push(removeMatchForSelector(variant, selector.name));
-		groups.set(key, current);
-	}
+  const groups = new Map<string, Variant[]>();
+  for (const variant of strippedVariants) {
+    const match = variant.matches.find(
+      (entry: Variant["matches"][number]) => entry.key === selector.name,
+    );
+    const key = matchKey(match);
+    const current = groups.get(key) ?? [];
+    current.push(removeMatchForSelector(variant, selector.name));
+    groups.set(key, current);
+  }
 
-	const cases = Array.from(groups.entries()).map(([key, groupVariants]) => {
-		const caseKey = caseKeyFromMatch(key);
-		const tokens = serializeVariants(
-			groupVariants,
-			restSelectors,
-			declarations,
-			isPluralContext
-		);
-		return `${caseKey} {${tokens}}`;
-	});
+  const cases = Array.from(groups.entries()).map(([key, groupVariants]) => {
+    const caseKey = caseKeyFromMatch(key);
+    const tokens = serializeVariants(
+      groupVariants,
+      restSelectors,
+      declarations,
+      isPluralContext,
+    );
+    return `${caseKey} {${tokens}}`;
+  });
 
-	let header = `${selectorConfig.arg}, ${selectorConfig.type},`;
-	if (selectorConfig.offset && selectorConfig.offset !== 0) {
-		header += ` offset:${selectorConfig.offset}`;
-	}
+  let header = `${selectorConfig.arg}, ${selectorConfig.type},`;
+  if (selectorConfig.offset && selectorConfig.offset !== 0) {
+    header += ` offset:${selectorConfig.offset}`;
+  }
 
-	const select = `{${header} ${cases.join(" ")}}`;
+  const select = `{${header} ${cases.join(" ")}}`;
 
-	return [
-		serializePattern(prefix, { inPlural }),
-		select,
-		serializePattern(suffix, { inPlural }),
-	].join("");
+  return [
+    serializePattern(prefix, { inPlural }),
+    select,
+    serializePattern(suffix, { inPlural }),
+  ].join("");
 }
 
 function matchKey(match: Variant["matches"][number] | undefined): string {
-	if (!match || match.type === "catchall-match") return "*";
-	return match.value;
+  if (!match || match.type === "catchall-match") return "*";
+  return match.value;
 }
 
 function caseKeyFromMatch(match: string): string {
-	if (match === "*" || match === "other") return "other";
-	return match;
+  if (match === "*" || match === "other") return "other";
+  return match;
 }
 
-function removeMatchForSelector(variant: Variant, selectorName: string): Variant {
-	return {
-		...variant,
-		matches: variant.matches.filter(
-			(entry: Variant["matches"][number]) => entry.key !== selectorName
-		),
-	};
+function removeMatchForSelector(
+  variant: Variant,
+  selectorName: string,
+): Variant {
+  return {
+    ...variant,
+    matches: variant.matches.filter(
+      (entry: Variant["matches"][number]) => entry.key !== selectorName,
+    ),
+  };
 }
 
 function resolveSelectorConfig(
-	selector: VariableReference,
-	declarations: Declaration[]
+  selector: VariableReference,
+  declarations: Declaration[],
 ): {
-	type: "select" | "plural" | "selectordinal";
-	arg: string;
-	offset?: number;
+  type: "select" | "plural" | "selectordinal";
+  arg: string;
+  offset?: number;
 } {
-	const local = declarations.find(
-		(declaration) =>
-			declaration.type === "local-variable" &&
-			declaration.name === selector.name
-	) as Declaration | undefined;
+  const local = declarations.find(
+    (declaration) =>
+      declaration.type === "local-variable" &&
+      declaration.name === selector.name,
+  ) as Declaration | undefined;
 
-	if (
-		local &&
-		local.type === "local-variable" &&
-		local.value.annotation?.type === "function-reference" &&
-		local.value.annotation?.name === "plural"
-	) {
-		const arg =
-			local.value.arg.type === "variable-reference"
-				? local.value.arg.name
-				: selector.name;
-		const typeOption = optionValue(local.value.annotation, "type");
-		const offsetOption = optionValue(local.value.annotation, "offset");
-		return {
-			type: typeOption === "ordinal" ? "selectordinal" : "plural",
-			arg,
-			offset: offsetOption ? Number(offsetOption) : undefined,
-		};
-	}
+  if (
+    local &&
+    local.type === "local-variable" &&
+    local.value.annotation?.type === "function-reference" &&
+    local.value.annotation?.name === "plural"
+  ) {
+    const arg =
+      local.value.arg.type === "variable-reference"
+        ? local.value.arg.name
+        : selector.name;
+    const typeOption = optionValue(local.value.annotation, "type");
+    const offsetOption = optionValue(local.value.annotation, "offset");
+    return {
+      type: typeOption === "ordinal" ? "selectordinal" : "plural",
+      arg,
+      offset: offsetOption ? Number(offsetOption) : undefined,
+    };
+  }
 
-	return {
-		type: "select",
-		arg: selector.name,
-	};
+  return {
+    type: "select",
+    arg: selector.name,
+  };
 }
 
-function optionValue(annotation: FunctionReference, name: string): string | undefined {
-	const option = annotation.options.find(
-		(entry: FunctionReference["options"][number]) => entry.name === name
-	);
-	if (!option || option.value.type !== "literal") return undefined;
-	return option.value.value;
+function optionValue(
+  annotation: FunctionReference,
+  name: string,
+): string | undefined {
+  const option = annotation.options.find(
+    (entry: FunctionReference["options"][number]) => entry.name === name,
+  );
+  if (!option || option.value.type !== "literal") return undefined;
+  return option.value.value;
 }
 
-function serializePattern(pattern: Pattern, options: { inPlural: boolean }): string {
-	return pattern
-		.map((part: Pattern[number]) => {
-			if (part.type === "text") {
-				return escapeText(part.value, options);
-			}
-			return serializeExpression(part, options);
-		})
-		.join("");
+function serializePattern(
+  pattern: Pattern,
+  options: { inPlural: boolean },
+): string {
+  return pattern
+    .map((part: Pattern[number]) => {
+      if (part.type === "text") {
+        return escapeText(part.value, options);
+      }
+      return serializeExpression(part, options);
+    })
+    .join("");
 }
 
 function serializeExpression(
-	expression: Expression,
-	options: { inPlural: boolean }
+  expression: Expression,
+  options: { inPlural: boolean },
 ): string {
-	if (
-		expression.annotation?.type === "function-reference" &&
-		expression.annotation.name === POUND_FUNCTION
-	) {
-		return "#";
-	}
+  if (
+    expression.annotation?.type === "function-reference" &&
+    expression.annotation.name === POUND_FUNCTION
+  ) {
+    return "#";
+  }
 
-	const arg =
-		expression.arg.type === "variable-reference"
-			? expression.arg.name
-			: expression.arg.value;
+  const arg =
+    expression.arg.type === "variable-reference"
+      ? expression.arg.name
+      : expression.arg.value;
 
-	if (!expression.annotation) {
-		return `{${arg}}`;
-	}
+  if (!expression.annotation) {
+    return `{${arg}}`;
+  }
 
-	const style = optionValue(expression.annotation, "style");
-	if (style) {
-		return `{${arg}, ${expression.annotation.name}, ${style}}`;
-	}
-	return `{${arg}, ${expression.annotation.name}}`;
+  const style = optionValue(expression.annotation, "style");
+  if (style) {
+    return `{${arg}, ${expression.annotation.name}, ${style}}`;
+  }
+  return `{${arg}, ${expression.annotation.name}}`;
 }
 
 function escapeText(value: string, options: { inPlural: boolean }): string {
-	let escaped = value.replace(/'/g, "''");
-	escaped = escaped.replace(/\{/g, "'{'").replace(/\}/g, "'}'");
-	if (options.inPlural) {
-		escaped = escaped.replace(/#/g, "'#'");
-	}
-	return escaped;
+  let escaped = value.replace(/'/g, "''");
+  escaped = escaped.replace(/\{/g, "'{'").replace(/\}/g, "'}'");
+  if (options.inPlural) {
+    escaped = escaped.replace(/#/g, "'#'");
+  }
+  return escaped;
 }
 
 export const _private = {
-	serializePattern,
-	resolveSelectorConfig,
+  serializePattern,
+  resolveSelectorConfig,
 };
 
 function stripPattern(
-	pattern: Pattern,
-	prefixLength: number,
-	suffixLength: number
+  pattern: Pattern,
+  prefixLength: number,
+  suffixLength: number,
 ): Pattern {
-	return pattern.slice(prefixLength, pattern.length - suffixLength);
+  return pattern.slice(prefixLength, pattern.length - suffixLength);
 }
 
 function commonPrefix(patterns: Pattern[], avoidPound: boolean): Pattern {
-	const prefix: Pattern = [];
-	const minLength = Math.min(...patterns.map((pattern) => pattern.length));
-	for (let i = 0; i < minLength; i += 1) {
-		const base = patterns[0]?.[i];
-		if (!base) break;
-		if (avoidPound && isPoundExpression(base)) break;
-		if (patterns.every((pattern) => patternElementsEqual(pattern[i], base))) {
-			prefix.push(base);
-		} else {
-			break;
-		}
-	}
-	return prefix;
+  const prefix: Pattern = [];
+  const minLength = Math.min(...patterns.map((pattern) => pattern.length));
+  for (let i = 0; i < minLength; i += 1) {
+    const base = patterns[0]?.[i];
+    if (!base) break;
+    if (avoidPound && isPoundExpression(base)) break;
+    if (patterns.every((pattern) => patternElementsEqual(pattern[i], base))) {
+      prefix.push(base);
+    } else {
+      break;
+    }
+  }
+  return prefix;
 }
 
 function commonSuffix(patterns: Pattern[], avoidPound: boolean): Pattern {
-	const suffix: Pattern = [];
-	const minLength = Math.min(...patterns.map((pattern) => pattern.length));
-	for (let i = 0; i < minLength; i += 1) {
-		const base = patterns[0]?.[patterns[0]!.length - 1 - i];
-		if (!base) break;
-		if (avoidPound && isPoundExpression(base)) break;
-		if (
-			patterns.every((pattern) =>
-				patternElementsEqual(
-					pattern[pattern.length - 1 - i],
-					base
-				)
-			)
-		) {
-			suffix.unshift(base);
-		} else {
-			break;
-		}
-	}
-	return suffix;
+  const suffix: Pattern = [];
+  const minLength = Math.min(...patterns.map((pattern) => pattern.length));
+  for (let i = 0; i < minLength; i += 1) {
+    const base = patterns[0]?.[patterns[0]!.length - 1 - i];
+    if (!base) break;
+    if (avoidPound && isPoundExpression(base)) break;
+    if (
+      patterns.every((pattern) =>
+        patternElementsEqual(pattern[pattern.length - 1 - i], base),
+      )
+    ) {
+      suffix.unshift(base);
+    } else {
+      break;
+    }
+  }
+  return suffix;
 }
 
 function patternElementsEqual(
-	left: Pattern[number] | undefined,
-	right: Pattern[number] | undefined
+  left: Pattern[number] | undefined,
+  right: Pattern[number] | undefined,
 ): boolean {
-	if (!left || !right || left.type !== right.type) return false;
-	if (left.type === "text" && right.type === "text") {
-		return left.value === right.value;
-	}
-	if (left.type === "expression" && right.type === "expression") {
-		if (left.arg.type !== right.arg.type) return false;
-		if (left.arg.type === "variable-reference") {
-			if (
-				right.arg.type !== "variable-reference" ||
-				left.arg.name !== right.arg.name
-			) {
-				return false;
-			}
-		} else if (
-			right.arg.type !== "literal" ||
-			left.arg.value !== right.arg.value
-		) {
-			return false;
-		}
+  if (!left || !right || left.type !== right.type) return false;
+  if (left.type === "text" && right.type === "text") {
+    return left.value === right.value;
+  }
+  if (left.type === "expression" && right.type === "expression") {
+    if (left.arg.type !== right.arg.type) return false;
+    if (left.arg.type === "variable-reference") {
+      if (
+        right.arg.type !== "variable-reference" ||
+        left.arg.name !== right.arg.name
+      ) {
+        return false;
+      }
+    } else if (
+      right.arg.type !== "literal" ||
+      left.arg.value !== right.arg.value
+    ) {
+      return false;
+    }
 
-		if (!left.annotation && !right.annotation) return true;
-		if (!left.annotation || !right.annotation) return false;
-		if (left.annotation.name !== right.annotation.name) return false;
-		return JSON.stringify(left.annotation.options) === JSON.stringify(right.annotation.options);
-	}
-	return false;
+    if (!left.annotation && !right.annotation) return true;
+    if (!left.annotation || !right.annotation) return false;
+    if (left.annotation.name !== right.annotation.name) return false;
+    return (
+      JSON.stringify(left.annotation.options) ===
+      JSON.stringify(right.annotation.options)
+    );
+  }
+  return false;
 }
 
 function isPoundExpression(part: Pattern[number]): boolean {
-	return (
-		part.type === "expression" &&
-		part.annotation?.type === "function-reference" &&
-		part.annotation.name === POUND_FUNCTION
-	);
+  return (
+    part.type === "expression" &&
+    part.annotation?.type === "function-reference" &&
+    part.annotation.name === POUND_FUNCTION
+  );
 }
