@@ -38,7 +38,7 @@ Configuration happens in `project.inlang/settings.json` under `"plugin.inlang.ic
 
 ### `pathPattern`
 
-You can define a single `pathPattern` or provide an array of patterns. The placeholder should be `{locale}` (preferred) or `{languageTag}` (legacy).
+You can define a single `pathPattern` or provide an array of patterns. The placeholder should be `{locale}`.
 
 #### Single path pattern example
 
@@ -60,20 +60,19 @@ You can define a single `pathPattern` or provide an array of patterns. The place
 }
 ```
 
-> [!WARNING]
-> When exporting, all messages are written to the last path pattern in the array. Multiple patterns are a one-way merge for import.
+> [!NOTE]
+> When exporting, all messages are written to every path pattern in the array (one file per pattern and locale). Multiple patterns are a one-way merge for import.
 
 ## Messages
 
-ICU1 files contain key-value pairs with ICU MessageFormat strings. `$schema` is ignored on import.
+ICU1 files contain key-value pairs with ICU MessageFormat strings.
 
 ```json
 // messages/en.json
 {
   "hello_world": "Hello World!",
   "greeting": "Good morning {name}!",
-  "likes": "You have {count, plural, one {# like} other {# likes}}",
-  "$schema": "https://inlang.com/schema/inlang-message-format"
+  "likes": "You have {count, plural, one {# like} other {# likes}}"
 }
 ```
 
@@ -102,19 +101,6 @@ ICU1 uses apostrophes to escape literals. To include literal braces, wrap them i
 - `'}'`
 
 If you need a literal apostrophe, use `''` (two single quotes).
-
-## Mapping to inlang data
-
-- ICU selectors become inlang selectors. For `plural` and `selectordinal`, the plugin creates a local variable declaration to carry the plural function:
-
-  - `local countPlural = count: plural offset=1`
-  - `local placeOrdinal = place: plural type=ordinal`
-
-  The selector then targets `countPlural` or `placeOrdinal`.
-
-- The `#` symbol is represented as an expression annotated with `icu:pound` so it can be exported back to `#`.
-
-- Formatter styles (e.g. `{when, time, short}`) are stored as `style` options on a function reference annotation.
 
 ## Caveats
 

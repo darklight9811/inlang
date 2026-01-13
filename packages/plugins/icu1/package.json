@@ -26,8 +26,9 @@
     "@inlang/sdk": "workspace:*",
     "@inlang/tsconfig": "workspace:*",
     "@sinclair/typebox": "^0.31.17",
-    "typescript": "^5.5.2",
+    "esbuild": "^0.25.9",
     "prettier": "3.3.3",
+    "typescript": "^5.5.2",
     "vitest": "^4.0.6"
   },
   "dependencies": {

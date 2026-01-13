@@ -78,7 +78,7 @@ function buildCorsHeaders(request: Request) {
   headers.set("access-control-allow-methods", "POST,OPTIONS");
   headers.set(
     "access-control-allow-headers",
-    request.headers.get("access-control-request-headers") ?? "content-type"
+    request.headers.get("access-control-request-headers") ?? "content-type",
   );
   headers.set("vary", "origin");
   return headers;

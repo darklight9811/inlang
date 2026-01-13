@@ -40,7 +40,7 @@ export const plugin: InlangPlugin<PluginConfig> = {
 			for (const locale of settings.locales) {
 				files.push({
 					locale,
-					path: pathPattern.replace(/{(languageTag|locale)}/, locale),
+					path: pathPattern.replace(/{locale}/, locale),
 				});
 			}
 		}
@@ -120,7 +120,7 @@ export const plugin: InlangPlugin<PluginConfig> = {
 		return Object.entries(result).flatMap(([locale, messagesByKey]) =>
 			formattedPathPatterns.map((pattern) => ({
 				locale,
-				name: pattern.replace(/{(languageTag|locale)}/, locale),
+				name: pattern.replace(/{locale}/, locale),
 				content: encoder.encode(JSON.stringify(messagesByKey, undefined, "\t")),
 			}))
 		);
