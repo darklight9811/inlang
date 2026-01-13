@@ -2,6 +2,11 @@
   "name": "@inlang/plugin-icu1",
   "version": "0.0.1",
   "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/opral/inlang",
+    "directory": "packages/plugins/icu1"
+  },
   "type": "module",
   "types": "./dist/index.d.ts",
   "exports": {

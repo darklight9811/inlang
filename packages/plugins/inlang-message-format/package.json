@@ -16,7 +16,8 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/opral/inlang"
+		"url": "https://github.com/opral/inlang",
+		"directory": "packages/plugins/inlang-message-format"
 	},
 	"scripts": {
 		"dev": "node ./build.js",
