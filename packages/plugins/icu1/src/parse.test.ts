@@ -85,7 +85,7 @@ describe("parseMessage", () => {
         { type: "input-variable", name: "count" },
         {
           type: "local-variable",
-          name: "countPlural",
+          name: "countPluralOffset1",
           value: {
             type: "expression",
             arg: { type: "variable-reference", name: "count" },
@@ -102,15 +102,15 @@ describe("parseMessage", () => {
     );
 
     expect(parsed.selectors).toEqual([
-      { type: "variable-reference", name: "countPlural" },
+      { type: "variable-reference", name: "countPluralOffset1" },
     ]);
 
     const matches = parsed.variants.map((variant) => variant.matches ?? []);
     expect(matches).toEqual(
       expect.arrayContaining([
-        [{ type: "literal-match", key: "countPlural", value: "=0" }],
-        [{ type: "literal-match", key: "countPlural", value: "one" }],
-        [{ type: "catchall-match", key: "countPlural" }],
+        [{ type: "literal-match", key: "countPluralOffset1", value: "=0" }],
+        [{ type: "literal-match", key: "countPluralOffset1", value: "one" }],
+        [{ type: "catchall-match", key: "countPluralOffset1" }],
       ]),
     );
 

@@ -212,7 +212,9 @@ function ensurePluralSelector(
   if (existing) return existing.selectorName;
 
   const baseName =
-    args.type === "selectordinal" ? `${args.arg}Ordinal` : `${args.arg}Plural`;
+    args.type === "selectordinal"
+      ? `${args.arg}Ordinal`
+      : `${args.arg}Plural${args.offset && args.offset !== 0 ? `Offset${args.offset}` : ""}`;
   let selectorName = baseName;
   let suffix = 1;
   while (
