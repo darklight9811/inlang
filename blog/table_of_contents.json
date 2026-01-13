@@ -1,5 +1,11 @@
 [
   {
+    "path": "./human-readable-message-ids/index.md",
+    "slug": "human-readable-message-ids",
+    "date": "2026-01-13",
+    "authors": ["samuelstroschein"]
+  },
+  {
     "path": "./addressing-tanstack-feedback/index.md",
     "slug": "addressing-tanstack-feedback",
     "date": "2026-01-10",

@@ -3,9 +3,9 @@ import { resolveOgImageUrl } from "./og-image";
 
 describe("resolveOgImageUrl", () => {
   it("returns absolute URLs unchanged", () => {
-    expect(
-      resolveOgImageUrl("https://example.com/og.png", "my-post"),
-    ).toBe("https://example.com/og.png");
+    expect(resolveOgImageUrl("https://example.com/og.png", "my-post")).toBe(
+      "https://example.com/og.png",
+    );
   });
 
   it("resolves relative URLs against the blog slug", () => {
