@@ -74,7 +74,7 @@ function GoogleAnalytics() {
     document.head.appendChild(script);
 
     gtag("js", new Date());
-    gtag("config", GA_MEASUREMENT_ID, { send_page_view: false });
+    gtag("config", GA_MEASUREMENT_ID);
 
     const sendPageView = (location: {
       href: string;
@@ -82,14 +82,14 @@ function GoogleAnalytics() {
       search: string;
       hash: string;
     }) => {
-      gtag("event", "page_view", {
-        page_location: location.href,
+      const pageLocation = new URL(location.href, window.location.origin).href;
+      gtag("config", GA_MEASUREMENT_ID, {
+        page_location: pageLocation,
         page_path: `${location.pathname}${location.search}${location.hash}`,
         page_title: document.title,
       });
     };
 
-    sendPageView(router.history.location);
     const unsubscribe = router.history.subscribe(({ location }) => {
       sendPageView(location);
     });
