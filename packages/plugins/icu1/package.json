@@ -1,7 +1,10 @@
 {
   "name": "@inlang/plugin-icu1",
   "version": "1.0.0",
-  "private": true,
+  "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/opral/inlang",
