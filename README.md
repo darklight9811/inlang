@@ -1,7 +1,7 @@
 <p align="center">
-  <a href="https://github.com/opral/monorepo">  </a>
+  <a href="https://github.com/opral/inlang">  </a>
 
-  <img src="https://github.com/opral/monorepo/blob/main/inlang/assets/logo_rounded.png?raw=true" alt="inlang icon" width="90px">
+  <img src="https://github.com/opral/inlang/blob/main/inlang/assets/logo_rounded.png?raw=true" alt="inlang icon" width="90px">
   
   <h2 align="center">
     The open file format and ecosystem for localization (i18n)
@@ -89,6 +89,6 @@ There are many ways you can contribute to inlang! Here are a few options:
 - Create issues every time you feel something is missing or goes wrong
 - Upvote issues with 👍 reaction so we know what the demand for a particular issue to prioritize it within the roadmap
 
-If you would like to contribute to the development of the project, please refer to our [Contributing guide](https://github.com/opral/monorepo/blob/main/CONTRIBUTING.md).
+If you would like to contribute to the development of the project, please refer to our [Contributing guide](https://github.com/opral/inlang/blob/main/CONTRIBUTING.md).
 
 All contributions are highly appreciated. 🙏

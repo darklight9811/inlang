@@ -1014,7 +1014,7 @@ function getGithubLink(
   }
 
   if (!link) return undefined;
-  return `https://github.com/opral/monorepo/blob/main/${link.replace(
+  return `https://github.com/opral/inlang/blob/main/${link.replace(
     "./",
     "",
   )}`;

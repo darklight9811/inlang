@@ -154,7 +154,7 @@ test("it should preserve json-like text in variant patterns", async () => {
 	]);
 });
 
-// https://github.com/opral/inlang-sdk/issues/209
+// https://github.com/opral/inlang/issues/209
 test.todo("it should enable foreign key constraints", async () => {
 	const sqlite = await createInMemoryDatabase({
 		readOnly: false,

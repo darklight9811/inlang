@@ -130,7 +130,7 @@ Fix @inlang/rpc is a bundled dependency that is not published on npm
 
   BREAKING:
 
-  - The `inlang lint` command has been removed. Please upvote https://github.com/opral/lix-sdk/issues/239 to re-introduce linting in a future release.
+  - The `inlang lint` command has been removed. Please upvote https://github.com/opral/lix/issues/239 to re-introduce linting in a future release.
 
   ```diff
   - inlang lint

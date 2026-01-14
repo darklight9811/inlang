@@ -13,6 +13,6 @@ export async function lintCommandAction(args: { project: string }) {
     "Inlang lint rules have been removed for the CLI v3 after the major lix and inlang SDK update to be replaced by a new validation system that generalizes beyond inlang and to reduce the scope of the update."
   );
   log.info(
-    "Upvote https://github.com/opral/lix-sdk/issues/239 to re-introduce linting."
+    "Upvote https://github.com/opral/lix/issues/239 to re-introduce linting."
   );
 }

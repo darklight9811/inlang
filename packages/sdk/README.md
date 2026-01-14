@@ -27,7 +27,7 @@ The inlang SDK is the official specification and parser for `.inlang` files.
 - 🖊️ **CRUD API**: Query messages with SQL.
 - 🧩 **Plugin System**: Extend the capabilities with plugins.
 - 📦 **Import/Export**: Import and export messages in different file formats.
-- [<img src="https://raw.githubusercontent.com/opral/inlang/refs/heads/main/lix/assets/lix-icon.svg" width="20" height="12" alt="Lix Icon">**Change control**](https://lix.opral.com/): Collaboration, change proposals, reviews, and automation. 
+- [<img src="https://raw.githubusercontent.com/opral/inlang/refs/heads/main/lix/assets/lix-icon.svg" width="20" height="12" alt="Lix Icon">**Change control**](https://lix.dev/): Collaboration, change proposals, reviews, and automation. 
 
 
 
@@ -153,9 +153,9 @@ console.log(messages);
 ### Querying changes
 
 > [!NOTE]  
-> The inlang plugin for lix is work in progress. If you stumble on issues, please open an issue on the [GitHub](https://github.com/opral/inlang-sdk).
+> The inlang plugin for lix is work in progress. If you stumble on issues, please open an issue on the [GitHub](https://github.com/opral/inlang).
 
-The inlang file format uses lix for change control. The lix APIs are exposed via `project.lix.*`. Visit the [lix documentation](https://lix.opral.com/) for more information on how to query changes.
+The inlang file format uses lix for change control. The lix APIs are exposed via `project.lix.*`. Visit the [lix documentation](https://lix.dev/) for more information on how to query changes.
 
 ```typescript
 const changes = await project.lix.db
@@ -214,7 +214,7 @@ await project.settings.set(settings)
 >
 > Git can't handle binary files. **If you don't intend to store the inlang file in git, do not use unpacked inlang files.** 
 > 
-> Unpacked inlang files are not portable. They depent on plugins that and do not persist [lix change control](https://lix.opral.com/) data.
+> Unpacked inlang files are not portable. They depent on plugins that and do not persist [lix change control](https://lix.dev/) data.
 
 ```typescript
 import { 

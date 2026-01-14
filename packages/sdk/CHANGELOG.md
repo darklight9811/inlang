@@ -151,7 +151,7 @@
 
 ### Minor Changes
 
-- c0b857a: stable lix ids when opening a project with `loadProjectFromDirectory()` https://github.com/opral/inlang-sdk/issues/228
+- c0b857a: stable lix ids when opening a project with `loadProjectFromDirectory()` https://github.com/opral/inlang/issues/228
 
 ### Patch Changes
 

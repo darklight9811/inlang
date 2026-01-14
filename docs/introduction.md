@@ -71,5 +71,5 @@ To store an inlang project in git, you can use the **unpacked format** — a dir
 
 ## Credits
 
-Inlang builds on [Lix](https://lix.opral.com) for version control and [Kysely](https://kysely.dev) for the query API.
+Inlang builds on [Lix](https://lix.dev) for version control and [Kysely](https://kysely.dev) for the query API.
 
