@@ -33,5 +33,7 @@
   "pricing": "free",
   "publisherName": "inlang",
   "publisherIcon": "https://inlang.com/favicon/safari-pinned-tab.svg",
+  "website": "https://www.npmjs.com/package/@inlang/cli",
+  "repository": "https://github.com/opral/inlang/tree/main/packages/cli",
   "license": "Apache-2.0"
 }

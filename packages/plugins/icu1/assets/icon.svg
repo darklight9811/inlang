@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="ICU MessageFormat v1">
+  <defs>
+    <linearGradient id="icu1-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0ea5e9"/>
+      <stop offset="1" stop-color="#0f766e"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="112" height="112" rx="20" fill="url(#icu1-grad)"/>
+  <rect x="24" y="28" width="80" height="72" rx="12" fill="#0b1220" opacity="0.9"/>
+  <path d="M40 46h48M40 64h32M40 82h24" stroke="#e2e8f0" stroke-width="6" stroke-linecap="round"/>
+  <path d="M88 56c6 0 10 4 10 10s-4 10-10 10" stroke="#38bdf8" stroke-width="6" stroke-linecap="round" fill="none"/>
+</svg>

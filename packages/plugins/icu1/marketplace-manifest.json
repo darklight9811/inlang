@@ -1,0 +1,28 @@
+{
+	"$schema": "https://inlang.com/schema/marketplace-manifest",
+	"id": "plugin.inlang.icu-messageformat-1",
+	"icon": "./assets/icon.svg",
+	"displayName": {
+		"en": "ICU MessageFormat v1"
+	},
+	"description": {
+		"en": "Storage plugin for inlang that reads and writes ICU MessageFormat v1 JSON files with support for selects, plurals, selectordinal, offsets, and formatter styles."
+	},
+	"pages": {
+		"/": "./README.md"
+	},
+	"keywords": [
+		"icu",
+		"messageformat",
+		"json",
+		"storage",
+		"messages",
+		"plugin",
+		"javascript",
+		"website"
+	],
+	"publisherName": "inlang",
+	"publisherIcon": "https://inlang.com/favicon/safari-pinned-tab.svg",
+	"license": "Apache-2.0",
+	"module": "https://cdn.jsdelivr.net/npm/@inlang/plugin-icu1@latest/dist/index.js"
+}

@@ -1,93 +1,102 @@
-// @ts-nocheck
+import { describe, expect, it } from "vitest";
+import type { Bundle, Message, Variant } from "@inlang/sdk";
+import { parseMessage } from "./parse.js";
+import { serializeMessage } from "./serialize.js";
 
-import { describe, it, expect } from "vitest";
-import {
-  _serializeICU1Message as serializeICU1Message,
-  serializeMessage,
-} from "./serialize.js";
-import { createMessage } from "./parse.js";
-import { parse as parseICU1 } from "@formatjs/icu-messageformat-parser";
-// this test-suite trusts that `createMessage` works correctly
+const baseArgs = {
+  bundleId: "bundle",
+  locale: "en",
+};
+
+function buildMessage(messageSource: string): {
+  bundle: Bundle;
+  message: Message;
+  variants: Variant[];
+} {
+  const parsed = parseMessage({
+    ...baseArgs,
+    messageSource,
+  });
+  const messageId = "message-en";
+  return {
+    bundle: {
+      id: "bundle",
+      declarations: parsed.declarations,
+    },
+    message: {
+      id: messageId,
+      bundleId: "bundle",
+      locale: "en",
+      selectors: parsed.selectors,
+    },
+    variants: parsed.variants.map((variant, index) => ({
+      id: `variant-${index}`,
+      messageId,
+      matches: variant.matches ?? [],
+      pattern: variant.pattern ?? [],
+    })),
+  };
+}
 
 describe("serializeMessage", () => {
-  it("serializes a message with a single variant", () => {
-    const msg = createMessage({
-      messageSource: "Hello {name}!",
-      bundleId: "sad_elephant",
-      locale: "en",
-    });
-
-    const serialized = serializeMessage(msg);
-    expect(serialized).toBe("Hello {name}!");
-  });
-
-  it("serializes a message with a select (no other)", () => {
-    const msg = createMessage({
-      messageSource:
-        "It's, {season, select, spring {spring} summer {summer} fall {fall} winter {winter}}",
-      bundleId: "sad_elephant",
-      locale: "en",
-    });
-
-    const serialized = serializeMessage(msg);
-    expect(serialized).toMatchInlineSnapshot(
-      '"It\'s, {season, select, spring {spring} summer {summer} fall {fall} winter {winter}}"'
+  it("serializes simple patterns", () => {
+    const { bundle, message, variants } = buildMessage("Hello {name}!");
+    expect(serializeMessage({ bundle, message, variants })).toBe(
+      "Hello {name}!",
     );
   });
 
-  it("serializes a message with a select (with other)", () => {
-    const msg = createMessage({
-      messageSource:
-        "It's, {season, select, spring {spring} summer {summer} fall {fall} other {winter}}",
-      bundleId: "sad_elephant",
-      locale: "en",
-    });
-    const serialized = serializeMessage(msg);
-    expect(serialized).toMatchInlineSnapshot(
-      '"It\'s, {season, select, spring {spring} summer {summer} fall {fall} other {winter}}"'
+  it("serializes selects", () => {
+    const { bundle, message, variants } = buildMessage(
+      "{gender, select, male {He} female {She} other {They}}",
+    );
+    expect(serializeMessage({ bundle, message, variants })).toBe(
+      "{gender, select, male {He} female {She} other {They}}",
     );
   });
 
-  it("serializes a message with a plural", () => {
-    const msg = createMessage({
-      messageSource:
-        "You have {likes, plural, =0 {No Likes} one {One Like} other {# Likes}}!",
-      bundleId: "sad_elephant",
-      locale: "en",
-    });
-
-    const serialized = serializeMessage(msg);
-    expect(serialized).toMatchInlineSnapshot(
-      '"You have {likes, select, 0 {No Likes} other {{likes, plural, one {One Like} other {{likes} Likes}}}}!"'
+  it("serializes plurals with offset and pounds", () => {
+    const { bundle, message, variants } = buildMessage(
+      "{count, plural, offset:1 =0 {no items} one {# item} other {# items}}",
     );
-  });
-});
-
-describe("serializeICU1Message", () => {
-  it("serializes text", () => {
-    const ast = parseICU1("Hello, {name}!");
-    expect(serializeICU1Message(ast)).toBe("Hello, {name}!");
-  });
-
-  it("serializes select", () => {
-    const ast = parseICU1(
-      "It's, {season, select, spring {spring} summer {summer} fall {fall} winter {winter}}!",
-      { requiresOtherClause: false }
-    );
-    expect(serializeICU1Message(ast)).toBe(
-      "It's, {season, select, spring {spring} summer {summer} fall {fall} winter {winter}}!"
+    expect(serializeMessage({ bundle, message, variants })).toBe(
+      "{count, plural, offset:1 =0 {no items} one {# item} other {# items}}",
     );
   });
 
-  it("serializes plurals", () => {
-    const ast = parseICU1(
-      "{likes, plural, =0 {No Likes} one {One Like} other {# Likes}}",
-      {
-        requiresOtherClause: false,
-      }
+  it("serializes selectordinal", () => {
+    const { bundle, message, variants } = buildMessage(
+      "{place, selectordinal, one {#st} two {#nd} few {#rd} other {#th}}",
     );
-    expect(serializeICU1Message(ast)).toBe(
-      "{likes, plural, =0 {No Likes} one {One Like} other {# Likes}}"
+    expect(serializeMessage({ bundle, message, variants })).toBe(
+      "{place, selectordinal, one {#st} two {#nd} few {#rd} other {#th}}",
+    );
+  });
+
+  it("serializes functions with style", () => {
+    const { bundle, message, variants } = buildMessage(
+      "The time is {when, time, short}.",
+    );
+    expect(serializeMessage({ bundle, message, variants })).toBe(
+      "The time is {when, time, short}.",
+    );
+  });
+
+  it("returns empty output when selectors exist but no variants", () => {
+    const { bundle, message } = buildMessage(
+      "{gender, select, male {He} female {She} other {They}}",
+    );
+
+    expect(serializeMessage({ bundle, message, variants: [] })).toBe("");
+  });
+
+  it("keeps identical select cases intact", () => {
+    const { bundle, message, variants } = buildMessage(
+      "{gender, select, male {Hello} female {Hello} other {Hello}}",
+    );
+
+    expect(serializeMessage({ bundle, message, variants })).toBe(
+      "{gender, select, male {Hello} female {Hello} other {Hello}}",
     );
   });
 });

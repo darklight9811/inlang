@@ -7,7 +7,6 @@
   "bumpVersionsWithWorkspaceProtocolOnly": true,
   "ignore": [
     "@inlang/cli-example",
-    "@inlang/plugin-icu1",
     "@inlang/template-plugin",
     "@inlang/website-v2",
     "@inlang/fink",
