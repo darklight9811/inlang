@@ -42,7 +42,7 @@ const ecosystemLinks = [
   },
   {
     label: "Validation Rules",
-    to: "https://github.com/opral/lix-sdk/issues/239",
+    to: "https://github.com/opral/lix/issues/239",
     external: true,
     icon: (
       <span

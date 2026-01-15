@@ -124,7 +124,7 @@ async function handleForeignKeyViolation(args: {
 			// TODO shouldn't throw. The API needs to be able to
 			// report issues back to the app without throwing and potentially failing
 			// to apply 1000 changes because 1 change is invalid
-			// same requirement as in inlang, see https://github.com/opral/inlang-sdk/issues/213
+			// same requirement as in inlang, see https://github.com/opral/inlang/issues/213
 			.executeTakeFirstOrThrow();
 
 	if (args.change.type === "message") {

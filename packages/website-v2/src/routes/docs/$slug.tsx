@@ -683,7 +683,7 @@ function scrollToAnchor(anchor: string) {
 
 function getDocsGithubLink(relativePath: string) {
   const sanitized = relativePath.replace(/^[./]+/, "");
-  return `https://github.com/opral/monorepo/blob/main/docs/${sanitized}`;
+  return `https://github.com/opral/inlang/blob/main/docs/${sanitized}`;
 }
 
 function getDocsJson(filename: string): Promise<string> {

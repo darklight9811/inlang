@@ -14,7 +14,7 @@ Inlang's architecture has three layers: storage, data model, and plugins.
 
 ## Storage
 
-An `.inlang` file is a SQLite database with built-in version control via [Lix](https://lix.opral.com). One portable file containing all your translations, settings, and change history.
+An `.inlang` file is a SQLite database with built-in version control via [Lix](https://lix.dev). One portable file containing all your translations, settings, and change history.
 
 SQLite was chosen because:
 

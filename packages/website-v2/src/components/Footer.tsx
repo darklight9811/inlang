@@ -64,7 +64,7 @@ const categoriesLinks = [
   { name: "Plugins", href: "/c/plugins" },
   {
     name: "Validation Rules",
-    href: "https://github.com/opral/lix-sdk/issues/239",
+    href: "https://github.com/opral/lix/issues/239",
   },
 ];
 

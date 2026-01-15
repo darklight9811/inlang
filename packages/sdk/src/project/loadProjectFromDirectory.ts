@@ -160,7 +160,7 @@ export async function loadProjectFromDirectory(
 						toBeImportedFilesMetadata: toBeImported.metadata,
 					});
 				} catch (e) {
-					// https://github.com/opral/inlang-sdk/issues/202
+					// https://github.com/opral/inlang/issues/202
 					if ((e as any)?.code === "ENOENT") {
 						continue;
 					}
@@ -648,7 +648,7 @@ async function upsertFileInLix(
 	data: ArrayBuffer
 ) {
 	// force posix path when upserting into lix
-	// https://github.com/opral/inlang-sdk/issues/229
+	// https://github.com/opral/inlang/issues/229
 	let posixPath = path.split(nodePath.win32.sep).join(nodePath.posix.sep);
 
 	if (posixPath.startsWith("/") === false) {
@@ -693,7 +693,7 @@ function categorizePlugins(plugins: readonly InlangPlugin[]) {
 /**
  * Imports local plugins for backwards compatibility.
  *
- * https://github.com/opral/inlang-sdk/issues/171
+ * https://github.com/opral/inlang/issues/171
  */
 async function importLocalPlugins(args: {
 	fs: typeof fs;

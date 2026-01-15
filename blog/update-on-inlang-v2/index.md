@@ -5,7 +5,7 @@ og:description: "Accelerating both inlang and lix by prioritizing lix."
 
 Dear inlang community, 
 
-The release of the inlang SDK v2 (variant support) is blocked until we have a 1.0 release of the lix version control system. We are prioritizing [lix](https://lix.opral.com/) so we can unblock v2. Which means:
+The release of the inlang SDK v2 (variant support) is blocked until we have a 1.0 release of the lix version control system. We are prioritizing [lix](https://lix.dev/) so we can unblock v2. Which means:
 
 - The release of the inlang SDK v2 is likely postponed until Jan/Feb next year.
 
@@ -33,7 +33,7 @@ You can try out a CSV file demo of lix [here](https://csv.lix.opral.com/).
 
 What makes globalization of software complicated is the required coordination effort. Designers need to know that translators updated translations to adjust their UIs, developers need to redeploy the app if translations change, auditors need to know that a message has changed, … the list goes on. 
 
-It was clear in March 2022 [[RFC 01](https://github.com/opral/monorepo/blob/c3ea483c6b6de65f8f05b211e06cbd53f73054b1/inlang/blog/notes-on-git-based-architecture.md)] that solving globalization of software requires version control to coordinate changes between teams. It was also clear that [git is unsuited for applications](https://github.com/opral/monorepo/blob/c3ea483c6b6de65f8f05b211e06cbd53f73054b1/inlang/blog/git-as-sdk.md#but-git-as-back-end-is-not-perfect), and we would have to develop lix.
+It was clear in March 2022 [[RFC 01](https://github.com/opral/inlang/blob/c3ea483c6b6de65f8f05b211e06cbd53f73054b1/inlang/blog/notes-on-git-based-architecture.md)] that solving globalization of software requires version control to coordinate changes between teams. It was also clear that [git is unsuited for applications](https://github.com/opral/inlang/blob/c3ea483c6b6de65f8f05b211e06cbd53f73054b1/inlang/blog/git-as-sdk.md#but-git-as-back-end-is-not-perfect), and we would have to develop lix.
 
 ![Coordination and automation diagram](./assets/coordination-automation.png)
 
@@ -41,11 +41,11 @@ Version control is required to reduce the coordination effort and automate globa
 
 ## Git slowed lix and inlang down
 
-We [initially built lix on top of Git](https://github.com/opral/monorepo/blob/c3ea483c6b6de65f8f05b211e06cbd53f73054b1/inlang/blog/notes-on-git-based-architecture.md), thinking that we ease adoption and benefit from Git’s decade-long development. That turned out to be false. We delayed building differentiating lix technologies. I gave a [presentation last week that delaying differentiating technology leads to a death trap for startups](https://samuelstroschein.substack.com/p/dont-delay-building-differentiating). A vicious cycle of building around git instead of building what differentiates lix occurred, consuming most engineering resources. Among the workarounds that we did because of git: 
+We [initially built lix on top of Git](https://github.com/opral/inlang/blob/c3ea483c6b6de65f8f05b211e06cbd53f73054b1/inlang/blog/notes-on-git-based-architecture.md), thinking that we ease adoption and benefit from Git’s decade-long development. That turned out to be false. We delayed building differentiating lix technologies. I gave a [presentation last week that delaying differentiating technology leads to a death trap for startups](https://samuelstroschein.substack.com/p/dont-delay-building-differentiating). A vicious cycle of building around git instead of building what differentiates lix occurred, consuming most engineering resources. Among the workarounds that we did because of git: 
 
-- we [needed to develop a git-compatible persistency layer](https://github.com/opral/monorepo/issues/1844) to deliver multi-variant support (gendering, pluralization, etc). It took more than 6 months and ended up getting canceled. 
+- we [needed to develop a git-compatible persistency layer](https://github.com/opral/inlang/issues/1844) to deliver multi-variant support (gendering, pluralization, etc). It took more than 6 months and ended up getting canceled. 
 
-- were [about to build a custom database](https://github.com/opral/monorepo/issues/1772) to sync git, filesystem, and app state
+- were [about to build a custom database](https://github.com/opral/inlang/issues/1772) to sync git, filesystem, and app state
 
 ![The git workaround trap](./assets/git-workaround-trap.png)
 

@@ -52,7 +52,7 @@ export type ImportFile = {
 	 * The metadata of the file to be imported.
 	 *
 	 * Used to store additional information that is accessible in `importFiles` via `toBeImportedFilesMetadata`.
-	 * https://github.com/opral/inlang-sdk/issues/218
+	 * https://github.com/opral/inlang/issues/218
 	 */
 	toBeImportedFilesMetadata?: Record<string, any>;
 };

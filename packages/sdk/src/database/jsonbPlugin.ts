@@ -229,7 +229,7 @@ function maybeSerializeJson(value: any): any {
 	return value;
 }
 
-// The code here didn't work https://github.com/opral/inlang-sdk/issues/132#issuecomment-2339321910
+// The code here didn't work https://github.com/opral/inlang/issues/132#issuecomment-2339321910
 // but would be the "right" solution to avoid heuristics which column might or might not be a json column
 // // modifies the query in place for readability and performance
 // function mapQuery(

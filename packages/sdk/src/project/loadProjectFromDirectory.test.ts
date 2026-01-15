@@ -885,7 +885,7 @@ test("it should provide plugins from disk for backwards compatibility but warn t
 	expect(settings.modules?.[0]).toBe("../local-plugins/mock-plugin.js");
 });
 
-// https://github.com/opral/inlang-sdk/issues/174
+// https://github.com/opral/inlang/issues/174
 test("plugin calls that use fs should be intercepted to use an absolute path", async () => {
 	process.cwd = () => "/";
 
@@ -1102,7 +1102,7 @@ test("providing multiple plugins that have legacy loadMessages and saveMessages 
 	expect(mockPlugin2.loadMessages).not.toHaveBeenCalled();
 });
 
-// https://github.com/opral/inlang-sdk/issues/228
+// https://github.com/opral/inlang/issues/228
 // Skipped: project ids are intentionally unstable for unpacked projects for now.
 test.skip("the lix id should be stable between loadings of the same project", async () => {
 	const mockRepo = {
