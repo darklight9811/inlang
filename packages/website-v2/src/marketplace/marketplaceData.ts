@@ -32,6 +32,84 @@ export type MarketplacePageData = {
   nextPagePath?: string;
 };
 
+type MarketplaceMirrorSpec = {
+  rawUrl: string;
+  sourceUrl: string;
+  sourceLabel: string;
+  ogTitle: string;
+  ogDescription: string;
+  ogImage: string;
+  heroImage: string;
+  heroImageAlt: string;
+  ciImage: string;
+  ciImageAlt: string;
+  pitch: string;
+};
+
+const marketplaceMirrors: Record<
+  string,
+  Record<string, MarketplaceMirrorSpec>
+> = {
+  "library.inlang.paraglideJs": {
+    "/tanstack-router": {
+      rawUrl:
+        "https://raw.githubusercontent.com/TanStack/router/main/examples/react/i18n-paraglide/README.md",
+      sourceUrl:
+        "https://github.com/TanStack/router/tree/main/examples/react/i18n-paraglide",
+      sourceLabel: "TanStack/router",
+      ogTitle: "The recommended i18n for TanStack Router",
+      ogDescription:
+        "Type-safe i18n with tiny bundles. Fully integrated with TanStack Router and tested in TanStack's CI/CD pipeline.",
+      ogImage: "https://inlang.com/tanstack-router-banner.svg",
+      heroImage: "https://inlang.com/tanstack-router-banner.svg",
+      heroImageAlt: "Paraglide JS for TanStack Router overview",
+      ciImage: "https://inlang.com/images/tanstack-ci-paraglide.svg",
+      ciImageAlt: "Paraglide JS tested in TanStack CI/CD",
+      pitch: [
+        "- Fully type-safe with IDE autocomplete",
+        "- SEO-friendly localized URLs",
+        "- Works with CSR, SSR, and SSG",
+        "- Tested as part of [TanStack's CI/CD pipeline](https://inlang.com/blog/tanstack-ci)",
+      ].join("\n"),
+    },
+    "/tanstack-start": {
+      rawUrl:
+        "https://raw.githubusercontent.com/TanStack/router/main/examples/react/start-i18n-paraglide/README.md",
+      sourceUrl:
+        "https://github.com/TanStack/router/tree/main/examples/react/start-i18n-paraglide",
+      sourceLabel: "TanStack/router",
+      ogTitle: "The recommended i18n for TanStack Start",
+      ogDescription:
+        "Type-safe i18n with tiny bundles. Fully integrated with TanStack Start and tested in TanStack's CI/CD pipeline.",
+      ogImage: "https://inlang.com/tanstack-start-banner.svg",
+      heroImage: "https://inlang.com/tanstack-start-banner.svg",
+      heroImageAlt: "Paraglide JS for TanStack Start overview",
+      ciImage: "https://inlang.com/images/tanstack-ci-paraglide.svg",
+      ciImageAlt: "Paraglide JS tested in TanStack CI/CD",
+      pitch: [
+        "- Fully type-safe with IDE autocomplete",
+        "- SEO-friendly localized URLs",
+        "- Works with CSR, SSR, and SSG",
+        "- Tested as part of [TanStack's CI/CD pipeline](https://inlang.com/blog/tanstack-ci)",
+      ].join("\n"),
+    },
+  },
+};
+
+export function getMarketplaceMirrorSpec(
+  manifestId: string,
+  pagePath: string,
+): MarketplaceMirrorSpec | undefined {
+  return marketplaceMirrors[manifestId]?.[pagePath];
+}
+
+export function isMarketplaceMirrorPage(
+  manifestId: string,
+  pagePath: string,
+): boolean {
+  return Boolean(getMarketplaceMirrorSpec(manifestId, pagePath));
+}
+
 export async function loadMarketplacePage({
   uid,
   slug,
@@ -99,20 +177,39 @@ export async function loadMarketplacePage({
     }
 
     const [, page] = pageEntry;
-    if (!page || !(await fileExists(page))) {
+    const mirrorSpec = getMarketplaceMirrorSpec(item.id, pagePath);
+    if (!page || (!mirrorSpec && !(await fileExists(page)))) {
       throw redirect({ to: itemPath });
     }
 
-    sourceUrl = page;
-    const content = await getContentString(page);
-    rawMarkdownContent = content;
-    const markdown = await parse(content);
-    renderedMarkdown = resolveHtmlAssetLinks(markdown.html, sourceUrl);
-    frontmatter = resolveFrontmatterLinks(
-      markdown.frontmatter as Record<string, {}> | undefined,
-      sourceUrl,
-    );
-    imports = frontmatter?.imports as string[] | undefined;
+    if (mirrorSpec) {
+      sourceUrl = mirrorSpec.rawUrl;
+      const response = await fetch(mirrorSpec.rawUrl);
+      if (!response.ok) {
+        throw redirect({ to: itemPath });
+      }
+      const exampleContent = await response.text();
+      const mirrorMarkdown = buildMirrorMarkdown(mirrorSpec, exampleContent);
+      rawMarkdownContent = mirrorMarkdown;
+      const markdown = await parse(mirrorMarkdown);
+      renderedMarkdown = resolveHtmlAssetLinks(markdown.html, sourceUrl);
+      frontmatter = resolveFrontmatterLinks(
+        markdown.frontmatter as Record<string, {}> | undefined,
+        sourceUrl,
+      );
+      imports = frontmatter?.imports as string[] | undefined;
+    } else {
+      sourceUrl = page;
+      const content = await getContentString(page);
+      rawMarkdownContent = content;
+      const markdown = await parse(content);
+      renderedMarkdown = resolveHtmlAssetLinks(markdown.html, sourceUrl);
+      frontmatter = resolveFrontmatterLinks(
+        markdown.frontmatter as Record<string, {}> | undefined,
+        sourceUrl,
+      );
+      imports = frontmatter?.imports as string[] | undefined;
+    }
   } else if (item.readme) {
     const readme =
       typeof item.readme === "object" ? item.readme.en : item.readme;
@@ -353,7 +450,10 @@ function getMarketplacePageNeighbors(
 
   for (const [key, value] of entries) {
     if (typeof value === "string") {
-      const isExternal = !value.endsWith(".md") && !value.endsWith(".html");
+      const isExternal =
+        !value.endsWith(".md") &&
+        !value.endsWith(".html") &&
+        !isMarketplaceMirrorPage(manifest.id, key);
       if (!isExternal) {
         allPages.push({ route: key, isExternal });
       }
@@ -361,7 +461,10 @@ function getMarketplacePageNeighbors(
       for (const [route, path] of Object.entries(
         value as Record<string, string>,
       )) {
-        const isExternal = !path.endsWith(".md") && !path.endsWith(".html");
+        const isExternal =
+          !path.endsWith(".md") &&
+          !path.endsWith(".html") &&
+          !isMarketplaceMirrorPage(manifest.id, route);
         if (!isExternal) {
           allPages.push({ route, isExternal });
         }
@@ -384,4 +487,53 @@ function getMarketplacePageNeighbors(
     prevRoute: prevRoute || undefined,
     nextRoute: nextRoute || undefined,
   };
+}
+
+function buildMirrorMarkdown(
+  spec: MarketplaceMirrorSpec,
+  exampleMarkdown: string,
+) {
+  const cleaned = stripLeadingMarkdownH1(
+    stripFrontmatterBlock(exampleMarkdown),
+  );
+  return [
+    "---",
+    `og:title: ${spec.ogTitle}`,
+    `og:description: ${spec.ogDescription}`,
+    `og:image: ${spec.ogImage}`,
+    `twitter:image: ${spec.ogImage}`,
+    `description: ${spec.ogDescription}`,
+    "---",
+    "",
+    `![${spec.heroImageAlt}](${spec.heroImage})`,
+    "",
+    spec.pitch,
+    "",
+    "---",
+    "",
+    "> [!NOTE]",
+    `> This example is mirrored from the official TanStack example in the [${spec.sourceLabel}](${spec.sourceUrl}) repository.`,
+    "",
+    cleaned,
+    "",
+  ].join("\n");
+}
+
+function stripFrontmatterBlock(markdown: string) {
+  if (!markdown.startsWith("---")) return markdown;
+  const end = markdown.indexOf("\n---", 3);
+  if (end === -1) return markdown;
+  return markdown.slice(end + 4).trimStart();
+}
+
+function stripLeadingMarkdownH1(markdown: string) {
+  const lines = markdown.split(/\r?\n/);
+  let index = 0;
+  while (index < lines.length && lines[index].trim() === "") {
+    index += 1;
+  }
+  if (index < lines.length && lines[index].startsWith("# ")) {
+    lines.splice(index, 1);
+  }
+  return lines.join("\n").trimStart();
 }

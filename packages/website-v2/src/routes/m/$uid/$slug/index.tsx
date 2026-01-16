@@ -59,10 +59,15 @@ function buildMarketplaceHead(
     description;
   const ogMeta = extractOgMeta(data.frontmatter);
   const twitterMeta = extractTwitterMeta(data.frontmatter);
+  const frontmatterImage =
+    typeof data.frontmatter?.["og:image"] === "string"
+      ? String(data.frontmatter["og:image"])
+      : undefined;
   const image =
-    data.manifest.gallery && data.manifest.gallery.length > 0
+    frontmatterImage ||
+    (data.manifest.gallery && data.manifest.gallery.length > 0
       ? data.manifest.gallery[0]
-      : "https://cdn.jsdelivr.net/gh/opral/inlang@latest/packages/website/public/opengraph/inlang-social-image.jpg";
+      : "https://cdn.jsdelivr.net/gh/opral/inlang@latest/packages/website/public/opengraph/inlang-social-image.jpg");
   const canonicalSlug = data.manifest.slug
     ? data.manifest.slug.replaceAll(".", "-")
     : data.manifest.id.replaceAll(".", "-");

@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import type { MarketplaceManifest } from "@inlang/marketplace-manifest";
+import { isMarketplaceMirrorPage } from "./marketplaceData";
 import type {
   MarketplacePageData,
   MarketplaceHeading,
@@ -459,7 +460,10 @@ function DocNav({
       flatPages.push({
         route: key,
         path: value,
-        isExternal: !value.endsWith(".md") && !value.endsWith(".html"),
+        isExternal:
+          !value.endsWith(".md") &&
+          !value.endsWith(".html") &&
+          !isMarketplaceMirrorPage(manifest.id, key),
       });
     } else {
       // Nested structure - use key as section title (empty string becomes "Overview")
@@ -471,7 +475,8 @@ function DocNav({
           path: path as string,
           isExternal:
             !(path as string).endsWith(".md") &&
-            !(path as string).endsWith(".html"),
+            !(path as string).endsWith(".html") &&
+            !isMarketplaceMirrorPage(manifest.id, route),
         })),
       });
     }
@@ -1014,10 +1019,7 @@ function getGithubLink(
   }
 
   if (!link) return undefined;
-  return `https://github.com/opral/inlang/blob/main/${link.replace(
-    "./",
-    "",
-  )}`;
+  return `https://github.com/opral/inlang/blob/main/${link.replace("./", "")}`;
 }
 
 function PageNavigation({
@@ -1040,7 +1042,10 @@ function PageNavigation({
 
   for (const [key, value] of entries) {
     if (typeof value === "string") {
-      const isExternal = !value.endsWith(".md") && !value.endsWith(".html");
+      const isExternal =
+        !value.endsWith(".md") &&
+        !value.endsWith(".html") &&
+        !isMarketplaceMirrorPage(manifest.id, key);
       if (!isExternal) {
         allPages.push({
           route: key,
@@ -1052,7 +1057,10 @@ function PageNavigation({
       for (const [route, path] of Object.entries(
         value as Record<string, string>,
       )) {
-        const isExternal = !path.endsWith(".md") && !path.endsWith(".html");
+        const isExternal =
+          !path.endsWith(".md") &&
+          !path.endsWith(".html") &&
+          !isMarketplaceMirrorPage(manifest.id, route);
         if (!isExternal) {
           allPages.push({
             route,
