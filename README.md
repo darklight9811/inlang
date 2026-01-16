@@ -1,7 +1,7 @@
 <p align="center">
   <a href="https://github.com/opral/inlang">  </a>
 
-  <img src="https://github.com/opral/inlang/blob/main/inlang/assets/logo_rounded.png?raw=true" alt="inlang icon" width="90px">
+  <img src="https://github.com/opral/inlang/blob/main/assets/logo_rounded.png?raw=true" alt="inlang icon" width="90px">
   
   <h2 align="center">
     The open file format and ecosystem for localization (i18n)
