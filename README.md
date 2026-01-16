@@ -4,7 +4,7 @@
   <img src="https://github.com/opral/inlang/blob/main/assets/logo_rounded.png?raw=true" alt="inlang icon" width="90px">
   
   <h2 align="center">
-    The open file format and ecosystem for localization (i18n)
+    The open file format for localization (i18n) tools.
   </h2>
 
   <p align="center">
@@ -25,10 +25,18 @@
 
 i18n tools are not interoperable.
 
+No common file format for i18n tools exists. Data formats like JSON or YAML are unsuited for complex tools that need CRUD APIs, need to scale to hundreds of thousands of messages, or require version control.
+
+The result is fragmented tooling:
+
+- Switching tools requires migrations and refactoring
+- Cross-team work requires manual exports and hand-offs
+- Automating workflows requires custom scripts and glue code
+
 ```
 ┌──────────┐        ┌───────────┐         ┌──────────┐
-│ i18n lib │───✗────│Translation│────✗────│  Design  │
-│          │        │   Tool    │         │   Tool   │
+│ i18n lib │───✗────│Translation│────✗────│   CI/CD  │
+│          │        │   Tool    │         │Automation│
 └──────────┘        └───────────┘         └──────────┘
 ```
 
@@ -36,12 +44,19 @@ Every tool has its own format, its own sync, its own collaboration layer. Cross-
 
 ## The solution
 
-An open file format. Everything interoperates.
+Inlang is an open file format designed for building localization (i18n) tooling. It provides:
+
+- CRUD API — Read and write translations programmatically
+- SQL queries — Query messages like a database, scale to millions
+- Plugin system — Import/export any format (JSON, XLIFF, etc.)
+- Version control — Built-in version control via [lix](https://github.com/opral/lix)
+
 
 ```
-┌──────────┐        ┌───────────┐         ┌──────────┐
-│ Paraglide│        │   Fink    │         │ Sherlock │
-└────┬─────┘        └─────┬─────┘         └─────┬────┘
+┌──────────┐        ┌───────────┐         ┌────────────┐
+│ i18n lib │        │Translation│         │   CI/CD    │
+│          │        │   Tool    │         │ Automation │
+└────┬─────┘        └─────┬─────┘         └─────┬──────┘
      │                    │                     │
      └─────────┐          │          ┌──────────┘
                ▼          ▼          ▼
@@ -50,8 +65,12 @@ An open file format. Everything interoperates.
            └──────────────────────────────────┘
 ```
 
-One file format. Multiple tools. All interoperable. The good old Unix philosophy.
+The result:
 
+- Switch tools without migrations — they all use the same file
+- Cross-team work without hand-offs — developers, translators, and designers all edit the same source
+- Automation just works — one source of truth, no glue code
+- 
 ## Popular tools
 
 - [Paraglide](https://inlang.com/m/gerre34r/library-inlang-paraglideJs) — i18n library for JS/TS with fully translated, typesafe & fast apps in minutes
@@ -72,14 +91,7 @@ const project = await loadProjectFromDirectory({
 const messages = await project.db.selectFrom("message").selectAll().execute();
 ```
 
-The SDK gives you:
-
-- CRUD API for translations
-- SQL queries
-- Plugin system for any format
-- Version control via lix
-
-[Read the docs →](https://inlang.com/documentation)
+[Read the docs →](https://inlang.com/docs)
 
 ## Contributing
 
