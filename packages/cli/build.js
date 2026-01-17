@@ -36,7 +36,6 @@ const __dirname = pathPolyfill123.dirname(__filename)
       PUBLIC_POSTHOG_TOKEN: process.env.PUBLIC_POSTHOG_TOKEN,
     }),
   },
-  external: ["esbuild-wasm"],
 });
 
 if (isProduction === false) {
