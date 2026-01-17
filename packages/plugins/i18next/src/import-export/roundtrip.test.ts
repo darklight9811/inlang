@@ -626,7 +626,13 @@ async function runExportFilesParsed(imported: any, settings?: any) {
 test("throws error on malformed JSON", async () => {
 	await expect(async () => {
 		await importFiles({
-			settings: {},
+			settings: {
+				baseLocale: "en",
+				locales: ["en"],
+				"plugin.inlang.i18next": {
+					pathPattern: "./messages/{locale}.json",
+				},
+			},
 			files: [
 				{
 					locale: "en",
@@ -641,7 +647,13 @@ test("throws error on malformed JSON", async () => {
 test("throws error on JSON with missing quote", async () => {
 	await expect(async () => {
 		await importFiles({
-			settings: {},
+			settings: {
+				baseLocale: "en",
+				locales: ["en", "de"],
+				"plugin.inlang.i18next": {
+					pathPattern: "./messages/{locale}.json",
+				},
+			},
 			files: [
 				{
 					locale: "de",
