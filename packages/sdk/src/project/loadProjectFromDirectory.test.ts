@@ -1214,3 +1214,16 @@ test("it imports plugins from cache if the network is not available", async () =
 	expect(plugins2.length).toBe(1);
 	expect(plugins2[0]?.key).toBe("mock-plugin");
 });
+
+test("throws error on malformed settings.json from directory", async () => {
+	const fs = Volume.fromJSON({
+		"/project.inlang/settings.json": '{"baseLocale": "en"',  // Invalid JSON - missing closing brace
+	});
+
+	await expect(async () => {
+		await loadProjectFromDirectory({
+			fs: fs as any,
+			path: "/project.inlang",
+		});
+	}).rejects.toThrow(/Failed to parse settings.json/);
+});

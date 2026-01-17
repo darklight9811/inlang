@@ -212,3 +212,25 @@ test("project.errors.get() returns errors for modules that couldn't be imported 
 
 	await project.close();
 });
+
+test("throws error on malformed settings.json", async () => {
+	const blob = await newProject();
+	const project = await loadProjectInMemory({ blob });
+
+	// Corrupt the settings.json with invalid JSON
+	await project.lix.db
+		.updateTable("file")
+		.where("path", "=", "/settings.json")
+		.set({
+			data: new TextEncoder().encode('{"baseLocale": "en"'),
+		})
+		.execute();
+
+	const corruptedBlob = await project.toBlob();
+	await project.close();
+
+	// Attempting to load a project with corrupted settings should throw
+	await expect(async () => {
+		await loadProjectInMemory({ blob: corruptedBlob });
+	}).rejects.toThrow(/Failed to parse settings.json/);
+});
