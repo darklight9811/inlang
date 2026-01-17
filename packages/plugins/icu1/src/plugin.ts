@@ -7,7 +7,7 @@ import type {
 import { PluginSettings } from "./settings.js";
 import { parseMessage } from "./parse.js";
 import { serializeMessage } from "./serialize.js";
-import { parse as parseJsonc } from "jsonc-parser";
+import { parse as parseJsonc, type ParseError } from "jsonc-parser";
 
 export const PLUGIN_KEY = "plugin.inlang.icu-messageformat-1";
 
@@ -56,7 +56,16 @@ export const plugin: InlangPlugin<PluginConfig> = {
     const decoder = new TextDecoder("utf-8");
 
     for (const file of files) {
-      const json = parseJsonc(decoder.decode(file.content));
+      const errors: ParseError[] = [];
+      const json = parseJsonc(decoder.decode(file.content), errors);
+      
+      if (errors.length > 0) {
+        const errorDetails = errors.map(e => 
+          `Error at offset ${e.offset}: ${e.error} (code ${e.error})`
+        ).join("; ");
+        throw new Error(`Failed to parse JSON file for locale "${file.locale}": ${errorDetails}`);
+      }
+      
       for (const [key, value] of Object.entries(json)) {
         if (key === "$schema") continue;
         if (typeof value !== "string") continue;

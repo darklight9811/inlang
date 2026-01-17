@@ -4,7 +4,7 @@ import { type plugin } from "../plugin.js";
 import { flatten } from "flat";
 import type { BundleImport, MessageImport, VariantImport } from "@inlang/sdk";
 import type { PluginSettings } from "../settings.js";
-import { parse as parseJsonc } from "jsonc-parser";
+import { parse as parseJsonc, type ParseError } from "jsonc-parser";
 
 export const importFiles: NonNullable<(typeof plugin)["importFiles"]> = async ({
 	files,
@@ -50,9 +50,17 @@ function parseFile(args: {
 	messages: MessageImport[];
 	variants: VariantImport[];
 } {
-	const resource: Record<string, string> = flatten(
-		parseJsonc(new TextDecoder().decode(args.content))
-	);
+	const errors: ParseError[] = [];
+	const parsed = parseJsonc(new TextDecoder().decode(args.content), errors);
+	
+	if (errors.length > 0) {
+		const errorDetails = errors.map(e => 
+			`Error at offset ${e.offset}: ${e.error} (code ${e.error})`
+		).join("; ");
+		throw new Error(`Failed to parse JSON file for locale "${args.locale}": ${errorDetails}`);
+	}
+	
+	const resource: Record<string, string> = flatten(parsed);
 
 	const bundles: BundleImport[] = [];
 	const messages: MessageImport[] = [];

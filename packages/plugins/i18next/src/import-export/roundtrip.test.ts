@@ -623,3 +623,32 @@ async function runExportFilesParsed(imported: any, settings?: any) {
 	const exported = await runExportFiles(imported, settings);
 	return JSON.parse(new TextDecoder().decode(exported[0]?.content));
 }
+test("throws error on malformed JSON", async () => {
+	await expect(async () => {
+		await importFiles({
+			settings: {},
+			files: [
+				{
+					locale: "en",
+					// Invalid JSON - missing closing brace
+					content: new TextEncoder().encode('{"key": "value"'),
+				},
+			],
+		});
+	}).rejects.toThrow(/Failed to parse JSON file for locale "en"/);
+});
+
+test("throws error on JSON with missing quote", async () => {
+	await expect(async () => {
+		await importFiles({
+			settings: {},
+			files: [
+				{
+					locale: "de",
+					// Invalid JSON - missing quote after key
+					content: new TextEncoder().encode('{"key: "value"}'),
+				},
+			],
+		});
+	}).rejects.toThrow(/Failed to parse JSON file for locale "de"/);
+});

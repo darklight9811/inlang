@@ -20,7 +20,7 @@ import { absolutePathFromProject, withAbsolutePaths } from "./path-helpers.js";
 import { saveProjectToDirectory } from "./saveProjectToDirectory.js";
 import { ENV_VARIABLES } from "../services/env-variables/index.js";
 import { compareSemver, pickHighestVersion, readProjectMeta } from "./meta.js";
-import { parse as parseJsonc } from "jsonc-parser";
+import { parse as parseJsonc, type ParseError } from "jsonc-parser";
 
 /**
  * Loads a project from a directory.
@@ -53,9 +53,18 @@ export async function loadProjectFromDirectory(
 	} & Omit<Parameters<typeof loadProjectInMemory>[0], "blob">
 ) {
 	const settingsPath = nodePath.join(args.path, "settings.json");
+	const errors: ParseError[] = [];
 	const settings = parseJsonc(
-		await args.fs.promises.readFile(settingsPath, "utf8")
+		await args.fs.promises.readFile(settingsPath, "utf8"),
+		errors
 	) as ProjectSettings;
+	
+	if (errors.length > 0) {
+		const errorDetails = errors.map(e => 
+			`Error at offset ${e.offset}: ${e.error} (code ${e.error})`
+		).join("; ");
+		throw new Error(`Failed to parse settings.json at ${settingsPath}: ${errorDetails}`);
+	}
 
 	let inlangId: string | undefined = undefined;
 

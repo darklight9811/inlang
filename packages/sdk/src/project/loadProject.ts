@@ -16,7 +16,7 @@ import { v4 } from "uuid";
 import { maybeCaptureLoadedProject } from "./maybeCaptureTelemetry.js";
 import { importFiles } from "../import-export/importFiles.js";
 import { exportFiles } from "../import-export/exportFiles.js";
-import { parse as parseJsonc } from "jsonc-parser";
+import { parse as parseJsonc, type ParseError } from "jsonc-parser";
 
 /**
  * Common load project logic.
@@ -75,8 +75,18 @@ export async function loadProject(args: {
 		.where("path", "=", "/settings.json")
 		.executeTakeFirstOrThrow();
 
+	const errors: ParseError[] = [];
+	const parsedSettings = parseJsonc(new TextDecoder().decode(settingsFile.data), errors);
+	
+	if (errors.length > 0) {
+		const errorDetails = errors.map(e => 
+			`Error at offset ${e.offset}: ${e.error} (code ${e.error})`
+		).join("; ");
+		throw new Error(`Failed to parse settings.json: ${errorDetails}`);
+	}
+	
 	const settings = withLanguageTagToLocaleMigration(
-		parseJsonc(new TextDecoder().decode(settingsFile.data)) as ProjectSettings
+		parsedSettings as ProjectSettings
 	);
 
 	const importedPlugins = await importPlugins({
@@ -129,9 +139,17 @@ export async function loadProject(args: {
 					.where("path", "=", "/settings.json")
 					.select("file.data")
 					.executeTakeFirstOrThrow();
-				return withLanguageTagToLocaleMigration(
-					parseJsonc(new TextDecoder().decode(file.data))
-				);
+				const errors: ParseError[] = [];
+				const parsedSettings = parseJsonc(new TextDecoder().decode(file.data), errors);
+				
+				if (errors.length > 0) {
+					const errorDetails = errors.map(e => 
+						`Error at offset ${e.offset}: ${e.error} (code ${e.error})`
+					).join("; ");
+					throw new Error(`Failed to parse settings.json: ${errorDetails}`);
+				}
+				
+				return withLanguageTagToLocaleMigration(parsedSettings);
 			},
 			set: async (newSettings) => {
 				const cloned = JSON.parse(JSON.stringify(newSettings));
@@ -163,9 +181,18 @@ export async function loadProject(args: {
 				.select("file.data")
 				.executeTakeFirstOrThrow();
 
+			const errors: ParseError[] = [];
 			const settings = parseJsonc(
-				new TextDecoder().decode(settingsFile.data)
+				new TextDecoder().decode(settingsFile.data),
+				errors
 			) as ProjectSettings;
+			
+			if (errors.length > 0) {
+				const errorDetails = errors.map(e => 
+					`Error at offset ${e.offset}: ${e.error} (code ${e.error})`
+				).join("; ");
+				throw new Error(`Failed to parse settings.json in importFiles: ${errorDetails}`);
+			}
 
 			return await importFiles({
 				files,
@@ -183,9 +210,18 @@ export async function loadProject(args: {
 				.select("file.data")
 				.executeTakeFirstOrThrow();
 
+			const errors: ParseError[] = [];
 			const settings = parseJsonc(
-				new TextDecoder().decode(settingsFile.data)
+				new TextDecoder().decode(settingsFile.data),
+				errors
 			) as ProjectSettings;
+			
+			if (errors.length > 0) {
+				const errorDetails = errors.map(e => 
+					`Error at offset ${e.offset}: ${e.error} (code ${e.error})`
+				).join("; ");
+				throw new Error(`Failed to parse settings.json in exportFiles: ${errorDetails}`);
+			}
 
 			return (
 				await exportFiles({
