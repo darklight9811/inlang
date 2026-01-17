@@ -80,7 +80,7 @@ export async function loadProject(args: {
 	
 	if (errors.length > 0) {
 		const errorDetails = errors.map(e => 
-			`Error at offset ${e.offset}: ${e.error} (code ${e.error})`
+			`Parse error at offset ${e.offset} (error code: ${e.error})`
 		).join("; ");
 		throw new Error(`Failed to parse settings.json: ${errorDetails}`);
 	}
@@ -144,7 +144,7 @@ export async function loadProject(args: {
 				
 				if (errors.length > 0) {
 					const errorDetails = errors.map(e => 
-						`Error at offset ${e.offset}: ${e.error} (code ${e.error})`
+						`Parse error at offset ${e.offset} (error code: ${e.error})`
 					).join("; ");
 					throw new Error(`Failed to parse settings.json: ${errorDetails}`);
 				}
@@ -189,7 +189,7 @@ export async function loadProject(args: {
 			
 			if (errors.length > 0) {
 				const errorDetails = errors.map(e => 
-					`Error at offset ${e.offset}: ${e.error} (code ${e.error})`
+					`Parse error at offset ${e.offset} (error code: ${e.error})`
 				).join("; ");
 				throw new Error(`Failed to parse settings.json in importFiles: ${errorDetails}`);
 			}
@@ -218,7 +218,7 @@ export async function loadProject(args: {
 			
 			if (errors.length > 0) {
 				const errorDetails = errors.map(e => 
-					`Error at offset ${e.offset}: ${e.error} (code ${e.error})`
+					`Parse error at offset ${e.offset} (error code: ${e.error})`
 				).join("; ");
 				throw new Error(`Failed to parse settings.json in exportFiles: ${errorDetails}`);
 			}

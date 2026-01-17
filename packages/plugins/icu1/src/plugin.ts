@@ -61,7 +61,7 @@ export const plugin: InlangPlugin<PluginConfig> = {
       
       if (errors.length > 0) {
         const errorDetails = errors.map(e => 
-          `Error at offset ${e.offset}: ${e.error} (code ${e.error})`
+          `Parse error at offset ${e.offset} (error code: ${e.error})`
         ).join("; ");
         throw new Error(`Failed to parse JSON file for locale "${file.locale}": ${errorDetails}`);
       }
