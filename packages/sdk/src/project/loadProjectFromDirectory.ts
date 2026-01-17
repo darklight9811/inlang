@@ -20,6 +20,7 @@ import { absolutePathFromProject, withAbsolutePaths } from "./path-helpers.js";
 import { saveProjectToDirectory } from "./saveProjectToDirectory.js";
 import { ENV_VARIABLES } from "../services/env-variables/index.js";
 import { compareSemver, pickHighestVersion, readProjectMeta } from "./meta.js";
+import { parse as parseJsonc } from "jsonc-parser";
 
 /**
  * Loads a project from a directory.
@@ -52,7 +53,7 @@ export async function loadProjectFromDirectory(
 	} & Omit<Parameters<typeof loadProjectInMemory>[0], "blob">
 ) {
 	const settingsPath = nodePath.join(args.path, "settings.json");
-	const settings = JSON.parse(
+	const settings = parseJsonc(
 		await args.fs.promises.readFile(settingsPath, "utf8")
 	) as ProjectSettings;
 

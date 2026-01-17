@@ -35,6 +35,7 @@
     "vitest": "^4.0.6"
   },
   "dependencies": {
-    "@messageformat/parser": "^5.1.1"
+    "@messageformat/parser": "^5.1.1",
+    "jsonc-parser": "^3.3.1"
   }
 }

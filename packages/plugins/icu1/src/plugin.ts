@@ -7,6 +7,7 @@ import type {
 import { PluginSettings } from "./settings.js";
 import { parseMessage } from "./parse.js";
 import { serializeMessage } from "./serialize.js";
+import { parse as parseJsonc } from "jsonc-parser";
 
 export const PLUGIN_KEY = "plugin.inlang.icu-messageformat-1";
 
@@ -55,7 +56,7 @@ export const plugin: InlangPlugin<PluginConfig> = {
     const decoder = new TextDecoder("utf-8");
 
     for (const file of files) {
-      const json = JSON.parse(decoder.decode(file.content));
+      const json = parseJsonc(decoder.decode(file.content));
       for (const [key, value] of Object.entries(json)) {
         if (key === "$schema") continue;
         if (typeof value !== "string") continue;

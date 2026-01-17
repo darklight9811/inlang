@@ -4,6 +4,7 @@ import { type plugin } from "../plugin.js";
 import { flatten } from "flat";
 import type { BundleImport, MessageImport, VariantImport } from "@inlang/sdk";
 import type { PluginSettings } from "../settings.js";
+import { parse as parseJsonc } from "jsonc-parser";
 
 export const importFiles: NonNullable<(typeof plugin)["importFiles"]> = async ({
 	files,
@@ -50,7 +51,7 @@ function parseFile(args: {
 	variants: VariantImport[];
 } {
 	const resource: Record<string, string> = flatten(
-		JSON.parse(new TextDecoder().decode(args.content))
+		parseJsonc(new TextDecoder().decode(args.content))
 	);
 
 	const bundles: BundleImport[] = [];

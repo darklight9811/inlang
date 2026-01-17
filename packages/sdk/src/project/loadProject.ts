@@ -16,6 +16,7 @@ import { v4 } from "uuid";
 import { maybeCaptureLoadedProject } from "./maybeCaptureTelemetry.js";
 import { importFiles } from "../import-export/importFiles.js";
 import { exportFiles } from "../import-export/exportFiles.js";
+import { parse as parseJsonc } from "jsonc-parser";
 
 /**
  * Common load project logic.
@@ -75,7 +76,7 @@ export async function loadProject(args: {
 		.executeTakeFirstOrThrow();
 
 	const settings = withLanguageTagToLocaleMigration(
-		JSON.parse(new TextDecoder().decode(settingsFile.data)) as ProjectSettings
+		parseJsonc(new TextDecoder().decode(settingsFile.data)) as ProjectSettings
 	);
 
 	const importedPlugins = await importPlugins({
@@ -121,7 +122,7 @@ export async function loadProject(args: {
 				return new TextDecoder().decode(file.data);
 			},
 		},
-		settings: {
+			settings: {
 			get: async () => {
 				const file = await args.lix.db
 					.selectFrom("file")
@@ -129,7 +130,7 @@ export async function loadProject(args: {
 					.select("file.data")
 					.executeTakeFirstOrThrow();
 				return withLanguageTagToLocaleMigration(
-					JSON.parse(new TextDecoder().decode(file.data))
+					parseJsonc(new TextDecoder().decode(file.data))
 				);
 			},
 			set: async (newSettings) => {
@@ -162,7 +163,7 @@ export async function loadProject(args: {
 				.select("file.data")
 				.executeTakeFirstOrThrow();
 
-			const settings = JSON.parse(
+			const settings = parseJsonc(
 				new TextDecoder().decode(settingsFile.data)
 			) as ProjectSettings;
 
@@ -182,7 +183,7 @@ export async function loadProject(args: {
 				.select("file.data")
 				.executeTakeFirstOrThrow();
 
-			const settings = JSON.parse(
+			const settings = parseJsonc(
 				new TextDecoder().decode(settingsFile.data)
 			) as ProjectSettings;
 
